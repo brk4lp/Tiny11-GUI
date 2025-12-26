@@ -1,0 +1,853 @@
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Security.Principal;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using Microsoft.Win32;
+using WinForms = System.Windows.Forms;
+using tiny11_ui.Services;
+
+namespace tiny11_ui.ViewModels
+{
+    public class MainViewModel : BaseViewModel
+    {
+        private string _isoPath = string.Empty;
+        public string IsoPath
+        {
+            get => _isoPath;
+            set
+            {
+                _isoPath = value;
+                OnPropertyChanged();
+                StartBuildCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private string _scratchPath = string.Empty;
+        public string ScratchPath
+        {
+            get => _scratchPath;
+            set
+            {
+                _scratchPath = value;
+                OnPropertyChanged();
+                StartBuildCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private string _outputPath = string.Empty;
+        public string OutputPath
+        {
+            get => _outputPath;
+            set
+            {
+                _outputPath = value;
+                OnPropertyChanged();
+                StartBuildCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private bool _isStandardBuild = true;
+        public bool IsStandardBuild
+        {
+            get => _isStandardBuild;
+            set
+            {
+                _isStandardBuild = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _isCoreBuild = false;
+        public bool IsCoreBuild
+        {
+            get => _isCoreBuild;
+            set
+            {
+                _isCoreBuild = value;
+                OnPropertyChanged();
+            }
+        }
+
+        #region Advanced Options Properties
+
+        // Preset Options
+        private bool _isMinimalPreset = false;
+        public bool IsMinimalPreset 
+        { 
+            get => _isMinimalPreset; 
+            set { _isMinimalPreset = value; OnPropertyChanged(); if (value) ApplyMinimalPreset(); } 
+        }
+
+        private bool _isBalancedPreset = true;
+        public bool IsBalancedPreset 
+        { 
+            get => _isBalancedPreset; 
+            set { _isBalancedPreset = value; OnPropertyChanged(); if (value) ApplyBalancedPreset(); } 
+        }
+
+        private bool _isGamingPreset = false;
+        public bool IsGamingPreset 
+        { 
+            get => _isGamingPreset; 
+            set { _isGamingPreset = value; OnPropertyChanged(); if (value) ApplyGamingPreset(); } 
+        }
+
+        private bool _isEnterprisePreset = false;
+        public bool IsEnterprisePreset 
+        { 
+            get => _isEnterprisePreset; 
+            set { _isEnterprisePreset = value; OnPropertyChanged(); if (value) ApplyEnterprisePreset(); } 
+        }
+
+        // Application Removal
+        private bool _removeEdge = true;
+        public bool RemoveEdge { get => _removeEdge; set { _removeEdge = value; OnPropertyChanged(); } }
+
+        private bool _removeOneDrive = true;
+        public bool RemoveOneDrive { get => _removeOneDrive; set { _removeOneDrive = value; OnPropertyChanged(); } }
+
+        private bool _removeCortana = true;
+        public bool RemoveCortana { get => _removeCortana; set { _removeCortana = value; OnPropertyChanged(); } }
+
+        private bool _removeChat = true;
+        public bool RemoveChat { get => _removeChat; set { _removeChat = value; OnPropertyChanged(); } }
+
+        private bool _removeTeams = true;
+        public bool RemoveTeams { get => _removeTeams; set { _removeTeams = value; OnPropertyChanged(); } }
+
+        private bool _removeXbox = false;
+        public bool RemoveXbox { get => _removeXbox; set { _removeXbox = value; OnPropertyChanged(); } }
+
+        // System Optimizations
+        private bool _disableTelemetry = true;
+        public bool DisableTelemetry { get => _disableTelemetry; set { _disableTelemetry = value; OnPropertyChanged(); } }
+
+        private bool _disableWindowsUpdate = false;
+        public bool DisableWindowsUpdate { get => _disableWindowsUpdate; set { _disableWindowsUpdate = value; OnPropertyChanged(); } }
+
+        private bool _disableDefender = false;
+        public bool DisableDefender { get => _disableDefender; set { _disableDefender = value; OnPropertyChanged(); } }
+
+        private bool _disableSponsoredApps = true;
+        public bool DisableSponsoredApps { get => _disableSponsoredApps; set { _disableSponsoredApps = value; OnPropertyChanged(); } }
+
+        private bool _disableReservedStorage = true;
+        public bool DisableReservedStorage { get => _disableReservedStorage; set { _disableReservedStorage = value; OnPropertyChanged(); } }
+
+        private bool _disableBitLocker = true;
+        public bool DisableBitLocker { get => _disableBitLocker; set { _disableBitLocker = value; OnPropertyChanged(); } }
+
+        // System Requirements Bypass
+        private bool _bypassTPM = true;
+        public bool BypassTPM { get => _bypassTPM; set { _bypassTPM = value; OnPropertyChanged(); } }
+
+        private bool _bypassCPU = true;
+        public bool BypassCPU { get => _bypassCPU; set { _bypassCPU = value; OnPropertyChanged(); } }
+
+        private bool _bypassRAM = true;
+        public bool BypassRAM { get => _bypassRAM; set { _bypassRAM = value; OnPropertyChanged(); } }
+
+        private bool _bypassSecureBoot = true;
+        public bool BypassSecureBoot { get => _bypassSecureBoot; set { _bypassSecureBoot = value; OnPropertyChanged(); } }
+
+        // OOBE Settings
+        private bool _bypassMSAccount = true;
+        public bool BypassMSAccount { get => _bypassMSAccount; set { _bypassMSAccount = value; OnPropertyChanged(); } }
+
+        private bool _skipNetworkConnection = true;
+        public bool SkipNetworkConnection { get => _skipNetworkConnection; set { _skipNetworkConnection = value; OnPropertyChanged(); } }
+
+        private bool _skipPrivacyQuestions = true;
+        public bool SkipPrivacyQuestions { get => _skipPrivacyQuestions; set { _skipPrivacyQuestions = value; OnPropertyChanged(); } }
+
+        #endregion
+
+        private ObservableCollection<string> _windowsEditions = new ObservableCollection<string>();
+        public ObservableCollection<string> WindowsEditions
+        {
+            get => _windowsEditions;
+            set
+            {
+                _windowsEditions = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string? _selectedEdition;
+        public string? SelectedEdition
+        {
+            get => _selectedEdition;
+            set
+            {
+                _selectedEdition = value;
+                OnPropertyChanged();
+                StartBuildCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        private bool _isEditionSelectionEnabled = false;
+        public bool IsEditionSelectionEnabled
+        {
+            get => _isEditionSelectionEnabled;
+            set
+            {
+                _isEditionSelectionEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _logOutput = string.Empty;
+        public string LogOutput
+        {
+            get => _logOutput;
+            set
+            {
+                _logOutput = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _statusText = "Hazır";
+        public string StatusText
+        {
+            get => _statusText;
+            set
+            {
+                _statusText = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private double _progressValue = 0;
+        public double ProgressValue
+        {
+            get => _progressValue;
+            set
+            {
+                _progressValue = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _isIndeterminate = false;
+        public bool IsIndeterminate
+        {
+            get => _isIndeterminate;
+            set
+            {
+                _isIndeterminate = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private readonly PowerShellService _powerShellService;
+        private readonly LocalizationService _localizationService;
+
+        public ICommand BrowseIsoCommand { get; }
+        public ICommand BrowseScratchCommand { get; }
+        public ICommand BrowseOutputCommand { get; }
+        public ICommand ChangeLanguageCommand { get; }
+        public RelayCommand StartBuildCommand { get; }
+
+        // Localization Properties
+        private ObservableCollection<LanguageInfo> _availableLanguages = new ObservableCollection<LanguageInfo>();
+        public ObservableCollection<LanguageInfo> AvailableLanguages
+        {
+            get => _availableLanguages;
+            set { _availableLanguages = value; OnPropertyChanged(); }
+        }
+
+        private LanguageInfo? _selectedLanguage;
+        public LanguageInfo? SelectedLanguage
+        {
+            get => _selectedLanguage;
+            set
+            {
+                _selectedLanguage = value;
+                OnPropertyChanged();
+                if (value != null)
+                {
+                    _localizationService.LoadLanguage(value.Code);
+                }
+            }
+        }
+
+        public MainViewModel()
+        {
+            _powerShellService = new PowerShellService();
+            _localizationService = LocalizationService.Instance;
+            
+            // PowerShell service event'lerini bağla
+            _powerShellService.OutputReceived += OnOutputReceived;
+            _powerShellService.ErrorReceived += OnErrorReceived;
+            _powerShellService.ProcessCompleted += OnProcessCompleted;
+            
+            // Localization event'ini bağla
+            _localizationService.LanguageChanged += OnLanguageChanged;
+
+            BrowseIsoCommand = new RelayCommand(BrowseIso);
+            BrowseScratchCommand = new RelayCommand(BrowseScratch);
+            BrowseOutputCommand = new RelayCommand(BrowseOutput);
+            ChangeLanguageCommand = new RelayCommand(ChangeLanguage);
+            StartBuildCommand = new RelayCommand(StartBuild, CanStartBuild);
+            
+            // Dil seçeneklerini yükle
+            LoadAvailableLanguages();
+
+            // Varsayılan çalışma dizini
+            ScratchPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Tiny11_Temp");
+            
+            // Başlangıç mesajı (localize edilecek)
+            UpdateStartupMessage();
+        }
+
+        private void BrowseIso()
+        {
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Windows 11 ISO Dosyası Seç",
+                Filter = "ISO Dosyaları (*.iso)|*.iso|Tüm Dosyalar (*.*)|*.*",
+                FilterIndex = 1
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                IsoPath = openFileDialog.FileName;
+                LogOutput += $"ISO dosyası seçildi: {IsoPath}\n";
+                
+                // Windows sürümlerini yükle
+                _ = LoadWindowsEditionsAsync();
+            }
+        }
+
+        private void BrowseScratch()
+        {
+            using var folderDialog = new WinForms.FolderBrowserDialog
+            {
+                Description = "Çalışma Dizini Seç",
+                UseDescriptionForTitle = true,
+                SelectedPath = ScratchPath
+            };
+
+            if (folderDialog.ShowDialog() == WinForms.DialogResult.OK)
+            {
+                ScratchPath = folderDialog.SelectedPath;
+                LogOutput += $"Çalışma dizini seçildi: {ScratchPath}\n";
+            }
+        }
+
+        private void BrowseOutput()
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Tiny11 ISO Dosyasını Kaydet",
+                Filter = "ISO Dosyaları (*.iso)|*.iso",
+                DefaultExt = "iso",
+                FileName = "tiny11.iso"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                OutputPath = saveFileDialog.FileName;
+                LogOutput += $"Çıktı ISO yolu seçildi: {OutputPath}\n";
+            }
+        }
+
+        private async void StartBuild()
+        {
+            if (!CanStartBuild())
+                return;
+
+            try
+            {
+                StatusText = "İşlem başlatılıyor...";
+                IsIndeterminate = true;
+                
+                // Çalışma dizini oluştur
+                if (!Directory.Exists(ScratchPath))
+                {
+                    Directory.CreateDirectory(ScratchPath);
+                }
+
+                LogOutput += "=== Tiny11 Oluşturma İşlemi Başladı ===\n";
+                LogOutput += $"ISO: {IsoPath}\n";
+                LogOutput += $"Çalışma Dizini: {ScratchPath}\n";
+                LogOutput += $"Sürüm: {SelectedEdition}\n";
+                LogOutput += $"Tür: {(IsCoreBuild ? "Core" : "Standart")}\n\n";
+
+                // İlk önce ISO'yu mount et
+                StatusText = "ISO mount ediliyor...";
+                LogOutput += "📀 ISO dosyası mount ediliyor...\n";
+                
+                var isoLetter = await _powerShellService.MountIsoAndGetDriveLetterAsync(IsoPath!);
+                if (string.IsNullOrEmpty(isoLetter))
+                {
+                    throw new Exception("ISO dosyası mount edilemedi!");
+                }
+                
+                LogOutput += $"✅ ISO mount edildi: {isoLetter}:\n";
+                
+                var scratchLetter = ScratchPath.Substring(0, 1);
+                
+                // Edition index'i Windows sürümü string'inden çıkar
+                var editionIndex = 1; // Varsayılan
+                if (SelectedEdition!.Contains(" - "))
+                {
+                    var parts = SelectedEdition.Split(new[] { " - " }, StringSplitOptions.None);
+                    if (int.TryParse(parts[0], out int parsedIndex))
+                    {
+                        editionIndex = parsedIndex;
+                    }
+                }
+
+                LogOutput += $"📋 Edition Index: {editionIndex}\n";
+                LogOutput += $"💾 ISO Sürücü: {isoLetter}\n";
+                LogOutput += $"📁 Çalışma Sürücüsü: {scratchLetter}\n\n";
+
+                // PowerShell betiğinin bulunduğu klasör (tiny11builder script'lerinin olduğu yer)
+                var scriptPath = @"C:\Users\berke\Documents\tiny11builder-workspace";
+                
+                StatusText = "PowerShell betiği çalıştırılıyor...";
+                
+                var success = await _powerShellService.RunTiny11ScriptAsync(
+                    scriptPath, 
+                    isoLetter, 
+                    scratchLetter, 
+                    OutputPath,
+                    editionIndex, 
+                    IsCoreBuild
+                );
+                
+                // Script path'den gerçek çıktı konumunu belirle
+                var outputDir = @"C:\Users\berke\Documents\tiny11builder-workspace";
+                var expectedIsoPath = Path.Combine(outputDir, "tiny11.iso");
+                
+                if (success && File.Exists(expectedIsoPath))
+                {
+                    StatusText = "✅ İşlem başarıyla tamamlandı!";
+                    LogOutput += "\n🎉 Tiny11 ISO dosyası başarıyla oluşturuldu!\n";
+                    LogOutput += $"📁 Çıktı konumu: {expectedIsoPath}\n";
+                    
+                    // Dosya boyutunu göster
+                    var fileInfo = new FileInfo(expectedIsoPath);
+                    var sizeInGB = fileInfo.Length / (1024.0 * 1024.0 * 1024.0);
+                    LogOutput += $"💾 Dosya boyutu: {sizeInGB:F2} GB ({fileInfo.Length:N0} bytes)\n";
+                }
+                else if (success)
+                {
+                    StatusText = "⚠️ İşlem tamamlandı ancak ISO bulunamadı!";
+                    LogOutput += "\n⚠️ Script tamamlandı ancak ISO dosyası bulunamadı.\n";
+                    LogOutput += $"🔍 Beklenen konum: {expectedIsoPath}\n";
+                    LogOutput += "📂 Lütfen tiny11builder-workspace klasörünü kontrol edin.\n";
+                }
+                else
+                {
+                    StatusText = "❌ İşlem başarısız oldu!";
+                    LogOutput += "\n❌ İşlem tamamlanamadı. Lütfen hataları kontrol edin.\n";
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOutput += $"HATA: {ex.Message}\n";
+                StatusText = "Hata oluştu!";
+            }
+            finally
+            {
+                IsIndeterminate = false;
+            }
+        }
+
+        private bool CanStartBuild()
+        {
+            var canStart = !string.IsNullOrEmpty(IsoPath) && 
+                           !string.IsNullOrEmpty(ScratchPath) && 
+                           !string.IsNullOrEmpty(OutputPath) && 
+                           !string.IsNullOrEmpty(SelectedEdition);
+            
+            // Debug bilgisi
+            if (!canStart)
+            {
+                var missing = new List<string>();
+                if (string.IsNullOrEmpty(IsoPath)) missing.Add("ISO");
+                if (string.IsNullOrEmpty(ScratchPath)) missing.Add("Çalışma Dizini");
+                if (string.IsNullOrEmpty(SelectedEdition)) missing.Add("Windows Sürümü");
+                
+                StatusText = $"Eksik: {string.Join(", ", missing)}";
+            }
+            else
+            {
+                StatusText = "Hazır - İşlemi başlatabilirsiniz";
+            }
+            
+            return canStart;
+        }
+
+        private bool IsRunningAsAdministrator()
+        {
+            var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        private async Task LoadWindowsEditionsAsync()
+        {
+            try
+            {
+                if (!IsRunningAsAdministrator())
+                {
+                    LogOutput += "⚠️  UYARI: Uygulamanın yönetici yetkisiyle çalışması önerilir.\n";
+                    LogOutput += "Windows sürümlerini okumak için yönetici yetkisi gerekebilir.\n";
+                    LogOutput += "Varsayılan sürümler yükleniyor...\n\n";
+                    
+                    // Yönetici yetkisi yoksa tüm varsayılan sürümler ekle
+                    WindowsEditions.Clear();
+                    WindowsEditions.Add("1 - Windows 11 Home");
+                    WindowsEditions.Add("2 - Windows 11 Home Single Language");
+                    WindowsEditions.Add("3 - Windows 11 Education");
+                    WindowsEditions.Add("4 - Windows 11 Pro");
+                    WindowsEditions.Add("5 - Windows 11 Pro Education");
+                    WindowsEditions.Add("6 - Windows 11 Pro for Workstations");
+                    
+                    SelectedEdition = WindowsEditions[3]; // Windows 11 Pro'yu varsayılan yap
+                    IsEditionSelectionEnabled = true;
+                    StatusText = "Hazır (Varsayılan sürümler)";
+                    return;
+                }
+
+                StatusText = "Windows sürümleri yükleniyor...";
+                IsIndeterminate = true;
+                
+                var editions = await _powerShellService.GetWindowsEditionsAsync(IsoPath!);
+                
+                WindowsEditions.Clear();
+                foreach (var edition in editions)
+                {
+                    WindowsEditions.Add(edition);
+                }
+
+                if (WindowsEditions.Count > 0)
+                {
+                    SelectedEdition = WindowsEditions[0];
+                    IsEditionSelectionEnabled = true;
+                    LogOutput += $"✅ {WindowsEditions.Count} Windows sürümü başarıyla yüklendi.\n";
+                }
+                else
+                {
+                    LogOutput += "❌ Windows sürümü bulunamadı.\n";
+                }
+
+                StatusText = "Hazır";
+            }
+            catch (Exception ex)
+            {
+                LogOutput += $"❌ Windows sürümleri yüklenemedi: {ex.Message}\n";
+                LogOutput += "Varsayılan sürümler yükleniyor...\n";
+                
+                // Hata durumunda tüm varsayılan sürümler
+                WindowsEditions.Clear();
+                WindowsEditions.Add("1 - Windows 11 Home");
+                WindowsEditions.Add("2 - Windows 11 Home Single Language");
+                WindowsEditions.Add("3 - Windows 11 Education");
+                WindowsEditions.Add("4 - Windows 11 Pro");
+                WindowsEditions.Add("5 - Windows 11 Pro Education");
+                WindowsEditions.Add("6 - Windows 11 Pro for Workstations");
+                SelectedEdition = WindowsEditions[3]; // Windows 11 Pro
+                IsEditionSelectionEnabled = true;
+                
+                StatusText = "Hazır (Varsayılan sürümler)";
+            }
+            finally
+            {
+                IsIndeterminate = false;
+            }
+        }
+
+        private void OnOutputReceived(string output)
+        {
+            // UI thread'de çalıştır
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                LogOutput += output + "\n";
+                
+                // Progress tracking based on output messages
+                if (output.Contains("Exporting image"))
+                    StatusText = "📤 Exporting image...";
+                else if (output.Contains("Unmounting image"))
+                    StatusText = "📤 Unmounting image...";
+                else if (output.Contains("Cleanup complete"))
+                    StatusText = "🧹 Cleanup complete...";
+                else if (output.Contains("Creating ISO"))
+                    StatusText = "💿 Creating ISO...";
+                else if (output.Contains("Mounting"))
+                    StatusText = "📀 Mounting ISO...";
+                else if (output.Contains("Copying"))
+                    StatusText = "📋 Copying files...";
+            });
+        }
+
+        private void OnErrorReceived(string error)
+        {
+            // UI thread'de çalıştır
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                LogOutput += $"❌ HATA: {error}\n";
+            });
+        }
+
+        private async void OnProcessCompleted(int exitCode)
+        {
+            if (exitCode == 0)
+            {
+                StatusText = "İşlem başarıyla tamamlandı!";
+                LogOutput += "\n=== İşlem Başarıyla Tamamlandı ===\n";
+            }
+            else
+            {
+                StatusText = "İşlem hatayla sonlandı!";
+                LogOutput += $"\n=== İşlem Hata Koduyla Sonlandı: {exitCode} ===\n";
+            }
+            
+            // ISO'yu unmount et
+            if (!string.IsNullOrEmpty(IsoPath))
+            {
+                LogOutput += "📀 ISO unmount ediliyor...\n";
+                await _powerShellService.UnmountIsoAsync(IsoPath);
+            }
+            
+            IsIndeterminate = false;
+        }
+
+        #region Preset Methods
+
+        private void ApplyMinimalPreset()
+        {
+            // Minimal: Maximum temizlik, minimum özellik
+            RemoveEdge = true;
+            RemoveOneDrive = true;
+            RemoveCortana = true;
+            RemoveChat = true;
+            RemoveTeams = true;
+            RemoveXbox = true;
+            
+            DisableTelemetry = true;
+            DisableWindowsUpdate = true;
+            DisableDefender = true;
+            DisableSponsoredApps = true;
+            DisableReservedStorage = true;
+            DisableBitLocker = true;
+            
+            BypassTPM = true;
+            BypassCPU = true;
+            BypassRAM = true;
+            BypassSecureBoot = true;
+            
+            BypassMSAccount = true;
+            SkipNetworkConnection = true;
+            SkipPrivacyQuestions = true;
+
+            LogOutput += "🎯 Minimal preset uygulandı - Maksimum optimizasyon\n";
+        }
+
+        private void ApplyBalancedPreset()
+        {
+            // Balanced: Dengeli yaklaşım (varsayılan)
+            RemoveEdge = true;
+            RemoveOneDrive = true;
+            RemoveCortana = true;
+            RemoveChat = true;
+            RemoveTeams = true;
+            RemoveXbox = false;
+            
+            DisableTelemetry = true;
+            DisableWindowsUpdate = false;
+            DisableDefender = false;
+            DisableSponsoredApps = true;
+            DisableReservedStorage = true;
+            DisableBitLocker = true;
+            
+            BypassTPM = true;
+            BypassCPU = true;
+            BypassRAM = true;
+            BypassSecureBoot = true;
+            
+            BypassMSAccount = true;
+            SkipNetworkConnection = true;
+            SkipPrivacyQuestions = true;
+
+            LogOutput += "⚖️ Balanced preset uygulandı - Dengeli optimizasyon\n";
+        }
+
+        private void ApplyGamingPreset()
+        {
+            // Gaming: Performans odaklı, Xbox apps korunur
+            RemoveEdge = false; // Bazı oyunlar Edge WebView kullanır
+            RemoveOneDrive = true;
+            RemoveCortana = true;
+            RemoveChat = true;
+            RemoveTeams = true;
+            RemoveXbox = false; // Gaming için Xbox apps korunur
+            
+            DisableTelemetry = true;
+            DisableWindowsUpdate = false; // Oyun güncellemeleri için
+            DisableDefender = false; // Güvenlik korunur
+            DisableSponsoredApps = true;
+            DisableReservedStorage = false; // Performans için
+            DisableBitLocker = true;
+            
+            BypassTPM = true;
+            BypassCPU = true;
+            BypassRAM = true;
+            BypassSecureBoot = true;
+            
+            BypassMSAccount = false; // Xbox entegrasyonu için
+            SkipNetworkConnection = false;
+            SkipPrivacyQuestions = true;
+
+            LogOutput += "🎮 Gaming preset uygulandı - Performans optimizasyonu\n";
+        }
+
+        private void ApplyEnterprisePreset()
+        {
+            // Enterprise: İş ortamı için güvenlik ve stabilite odaklı
+            RemoveEdge = false; // Enterprise uygulamalar için
+            RemoveOneDrive = false; // İş dosyaları için
+            RemoveCortana = true;
+            RemoveChat = false; // İş iletişimi için
+            RemoveTeams = false; // İş iletişimi için
+            RemoveXbox = true;
+            
+            DisableTelemetry = false; // Enterprise telemetri korunabilir
+            DisableWindowsUpdate = false; // Güvenlik güncellemeleri
+            DisableDefender = false; // Güvenlik korunur
+            DisableSponsoredApps = true;
+            DisableReservedStorage = false;
+            DisableBitLocker = false; // Enterprise güvenlik
+            
+            BypassTPM = false; // Enterprise güvenlik için TPM korunur
+            BypassCPU = true;
+            BypassRAM = true;
+            BypassSecureBoot = false; // Enterprise güvenlik
+            
+            BypassMSAccount = true;
+            SkipNetworkConnection = false;
+            SkipPrivacyQuestions = false; // Enterprise uyumluluk
+
+            LogOutput += "🏢 Enterprise preset uygulandı - İş ortamı optimizasyonu\n";
+        }
+
+        #endregion
+
+        #region Localization Methods
+
+        private void LoadAvailableLanguages()
+        {
+            var languages = _localizationService.GetAvailableLanguages();
+            AvailableLanguages.Clear();
+            foreach (var language in languages)
+            {
+                AvailableLanguages.Add(language);
+            }
+            
+            // Mevcut dili seç
+            SelectedLanguage = AvailableLanguages.FirstOrDefault(l => l.Code == _localizationService.CurrentLanguage);
+        }
+
+        private void ChangeLanguage()
+        {
+            if (SelectedLanguage != null)
+            {
+                _localizationService.LoadLanguage(SelectedLanguage.Code);
+            }
+        }
+
+        private void OnLanguageChanged(object? sender, string languageCode)
+        {
+            // UI'daki tüm string'leri güncelle
+            OnPropertyChanged(nameof(LocalizedLabels));
+            OnPropertyChanged(nameof(LocalizedButtons));
+            OnPropertyChanged(nameof(LocalizedHeaders));
+            OnPropertyChanged(nameof(LocalizedPresets));
+            OnPropertyChanged(nameof(LocalizedApps));
+            OnPropertyChanged(nameof(LocalizedSystemFeatures));
+            OnPropertyChanged(nameof(LocalizedSystemRequirements));
+            OnPropertyChanged(nameof(LocalizedInstallationProcess));
+            OnPropertyChanged(nameof(LocalizedTooltips));
+            
+            // StatusText'i güncelle
+            if (!CanStartBuild())
+            {
+                CanStartBuild(); // Bu metod StatusText'i günceller
+            }
+            else
+            {
+                StatusText = GetLocalizedString("Ready");
+            }
+            
+            // Log'a dil değişikliği mesajı ekle
+            var message = GetLocalizedString(languageCode == "tr-TR" ? "LanguageChangedTR" : "LanguageChangedEN");
+            LogOutput += $"🌍 {message}\n";
+            
+            // Dialog'ları da güncelle
+            UpdateDialogTexts();
+        }
+
+        private void UpdateStartupMessage()
+        {
+            LogOutput = $"🚀 {GetLocalizedString("AppStarted")}\n";
+            if (IsRunningAsAdministrator())
+            {
+                LogOutput += $"✅ {GetLocalizedString("AdminMode")}\n";
+            }
+            else
+            {
+                LogOutput += $"⚠️  {GetLocalizedString("UserMode")}\n";
+                LogOutput += $"💡 {GetLocalizedString("AdminRecommendation")}\n";
+            }
+            LogOutput += $"📁 {GetLocalizedString("DefaultWorkingDir")}: {ScratchPath}\n\n";
+        }
+
+        private void UpdateDialogTexts()
+        {
+            // Dialog başlıklarını güncelleme burada yapılacak
+            // Şu an için boş bırakıyoruz
+        }
+
+        public string GetLocalizedString(string key) => _localizationService.GetString(key);
+        public string GetLocalizedString(string key, params object[] args) => _localizationService.GetString(key, args);
+
+        // Localized UI Properties
+        public LocalizedLabels LocalizedLabels => new LocalizedLabels(_localizationService);
+        public LocalizedButtons LocalizedButtons => new LocalizedButtons(_localizationService);
+        public LocalizedHeaders LocalizedHeaders => new LocalizedHeaders(_localizationService);
+        public LocalizedPresets LocalizedPresets => new LocalizedPresets(_localizationService);
+        public LocalizedApps LocalizedApps => new LocalizedApps(_localizationService);
+        public LocalizedSystemFeatures LocalizedSystemFeatures => new LocalizedSystemFeatures(_localizationService);
+        public LocalizedSystemRequirements LocalizedSystemRequirements => new LocalizedSystemRequirements(_localizationService);
+        public LocalizedInstallationProcess LocalizedInstallationProcess => new LocalizedInstallationProcess(_localizationService);
+        public LocalizedTooltips LocalizedTooltips => new LocalizedTooltips(_localizationService);
+
+        #endregion
+    }
+
+    public class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+        private readonly Func<bool>? _canExecute;
+
+        public RelayCommand(Action execute, Func<bool>? canExecute = null)
+        {
+            _execute = execute;
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => _canExecute == null || _canExecute();
+
+        public void Execute(object? parameter) => _execute();
+
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
+}

@@ -1,0 +1,8 @@
+<Application x:Class="tiny11_ui.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:tiny11_ui">
+    <Application.Resources>
+         
+    </Application.Resources>
+</Application>
