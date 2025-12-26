@@ -23,8 +23,9 @@ This GUI wrapper is designed to provide a simple and elegant user interface for 
 
 ## Usage
 
-To run the application, execute the following steps:
 <img width="602" height="870" alt="resim" src="https://github.com/user-attachments/assets/38e7b52a-06be-4857-a7d4-ce39614185ae" />
+
+To run the application, execute the following steps:
 
 
 1. Launch the application from your IDE or by running the compiled executable.
