@@ -47,9 +47,22 @@ To run the application, execute the following steps:
 
 ## Features
 
-- User-friendly interface for configuring the `tiny11maker.ps1` script.
-- Real-time feedback and output display from PowerShell script execution.
-- Customizable settings for user preferences and file paths.
+- **User-friendly Interface**: Modern WPF-based UI for easy configuration
+- **Multi-Language Support**: Fully localized interface supporting:
+  - 🇬🇧 English (default)
+  - 🇹🇷 Turkish (Türkçe)
+  - Dynamic language switching without application restart
+- **Advanced Customization Options**:
+  - Preset configurations (Minimal, Balanced, Gaming, Enterprise)
+  - Selective app removal (Edge, OneDrive, Cortana, Teams, Xbox, etc.)
+  - System optimization toggles (Telemetry, Windows Update, Defender, etc.)
+  - System requirements bypass (TPM, Secure Boot, CPU, RAM)
+  - Installation process customization (MS Account, Network, Privacy)
+- **Real-time Progress Tracking**: Live output from PowerShell script execution
+- **Automatic ISO Management**: Mount and unmount ISO files automatically
+- **Windows Edition Selection**: Choose from available Windows 11 editions in your ISO
+- **Custom Output Path**: Select where to save the final tiny11 ISO file
+- **Administrator Privilege Detection**: Automatic detection and guidance for admin rights
 
 ## Contributing
 
