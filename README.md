@@ -23,7 +23,7 @@ This GUI wrapper is designed to provide a simple and elegant user interface for 
 
 ## Usage
 
-<img width="602" height="870" alt="resim" src="https://github.com/user-attachments/assets/38e7b52a-06be-4857-a7d4-ce39614185ae" />
+<img width="761" height="870" alt="resim" src="https://github.com/user-attachments/assets/e81c4e37-18b8-4fb4-8124-851e75d5d24d" />
 
 To run the application, execute the following steps:
 
