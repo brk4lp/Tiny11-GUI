@@ -34,6 +34,7 @@ namespace tiny11_ui.ViewModels
         public string SelectButton => _localization.GetString("SelectButton");
         public string SaveButton => _localization.GetString("SaveButton");
         public string StartBuildButton => _localization.GetString("StartBuildButton");
+        public string CancelButton => _localization.GetString("CancelButton");
     }
 
     public class LocalizedHeaders

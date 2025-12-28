@@ -1,12 +1,16 @@
+using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
 using WinForms = System.Windows.Forms;
 using tiny11_ui.Services;
+using tiny11_ui.Models;
 
 namespace tiny11_ui.ViewModels
 {
@@ -209,7 +213,7 @@ namespace tiny11_ui.ViewModels
             }
         }
 
-        private string _statusText = "Hazır";
+        private string _statusText = "Ready";
         public string StatusText
         {
             get => _statusText;
@@ -242,6 +246,31 @@ namespace tiny11_ui.ViewModels
             }
         }
 
+        private bool _isBuildRunning = false;
+        public bool IsBuildRunning
+        {
+            get => _isBuildRunning;
+            set
+            {
+                _isBuildRunning = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanClose));
+                OnPropertyChanged(nameof(CanStartNewBuild));
+                CancelBuildCommand?.RaiseCanExecuteChanged();
+                StartBuildCommand?.RaiseCanExecuteChanged();
+            }
+        }
+
+        /// <summary>
+        /// Uygulama kapatılabilir mi?
+        /// </summary>
+        public bool CanClose => !IsBuildRunning;
+
+        /// <summary>
+        /// Yeni build başlatılabilir mi?
+        /// </summary>
+        public bool CanStartNewBuild => !IsBuildRunning;
+
         private readonly PowerShellService _powerShellService;
         private readonly LocalizationService _localizationService;
 
@@ -250,6 +279,7 @@ namespace tiny11_ui.ViewModels
         public ICommand BrowseOutputCommand { get; }
         public ICommand ChangeLanguageCommand { get; }
         public RelayCommand StartBuildCommand { get; }
+        public RelayCommand CancelBuildCommand { get; }
 
         // Localization Properties
         private ObservableCollection<LanguageInfo> _availableLanguages = new ObservableCollection<LanguageInfo>();
@@ -276,8 +306,8 @@ namespace tiny11_ui.ViewModels
 
         public MainViewModel()
         {
-            _powerShellService = new PowerShellService();
             _localizationService = LocalizationService.Instance;
+            _powerShellService = new PowerShellService(_localizationService);
             
             // PowerShell service event'lerini bağla
             _powerShellService.OutputReceived += OnOutputReceived;
@@ -292,6 +322,7 @@ namespace tiny11_ui.ViewModels
             BrowseOutputCommand = new RelayCommand(BrowseOutput);
             ChangeLanguageCommand = new RelayCommand(ChangeLanguage);
             StartBuildCommand = new RelayCommand(StartBuild, CanStartBuild);
+            CancelBuildCommand = new RelayCommand(CancelBuild, () => IsBuildRunning);
             
             // Dil seçeneklerini yükle
             LoadAvailableLanguages();
@@ -307,15 +338,15 @@ namespace tiny11_ui.ViewModels
         {
             var openFileDialog = new Microsoft.Win32.OpenFileDialog
             {
-                Title = "Windows 11 ISO Dosyası Seç",
-                Filter = "ISO Dosyaları (*.iso)|*.iso|Tüm Dosyalar (*.*)|*.*",
+                Title = GetLocalizedString("IsoDialogTitle"),
+                Filter = GetLocalizedString("IsoDialogFilter"),
                 FilterIndex = 1
             };
 
             if (openFileDialog.ShowDialog() == true)
             {
                 IsoPath = openFileDialog.FileName;
-                LogOutput += $"ISO dosyası seçildi: {IsoPath}\n";
+                LogOutput += string.Format(GetLocalizedString("IsoSelected"), IsoPath) + "\n";
                 
                 // Windows sürümlerini yükle
                 _ = LoadWindowsEditionsAsync();
@@ -326,7 +357,7 @@ namespace tiny11_ui.ViewModels
         {
             using var folderDialog = new WinForms.FolderBrowserDialog
             {
-                Description = "Çalışma Dizini Seç",
+                Description = GetLocalizedString("WorkingDirDialogTitle"),
                 UseDescriptionForTitle = true,
                 SelectedPath = ScratchPath
             };
@@ -334,7 +365,7 @@ namespace tiny11_ui.ViewModels
             if (folderDialog.ShowDialog() == WinForms.DialogResult.OK)
             {
                 ScratchPath = folderDialog.SelectedPath;
-                LogOutput += $"Çalışma dizini seçildi: {ScratchPath}\n";
+                LogOutput += string.Format(GetLocalizedString("WorkingDirSelected"), ScratchPath) + "\n";
             }
         }
 
@@ -342,8 +373,8 @@ namespace tiny11_ui.ViewModels
         {
             var saveFileDialog = new Microsoft.Win32.SaveFileDialog
             {
-                Title = "Tiny11 ISO Dosyasını Kaydet",
-                Filter = "ISO Dosyaları (*.iso)|*.iso",
+                Title = GetLocalizedString("OutputDialogTitle"),
+                Filter = GetLocalizedString("IsoDialogFilter"),
                 DefaultExt = "iso",
                 FileName = "tiny11.iso"
             };
@@ -351,8 +382,65 @@ namespace tiny11_ui.ViewModels
             if (saveFileDialog.ShowDialog() == true)
             {
                 OutputPath = saveFileDialog.FileName;
-                LogOutput += $"Çıktı ISO yolu seçildi: {OutputPath}\n";
+                LogOutput += string.Format(GetLocalizedString("OutputPathSelected"), OutputPath) + "\n";
             }
+        }
+
+        /// <summary>
+        /// İşlemi iptal et
+        /// </summary>
+        private async void CancelBuild()
+        {
+            if (!IsBuildRunning) return;
+
+            var result = System.Windows.MessageBox.Show(
+                GetLocalizedString("CancelConfirmMessage"),
+                GetLocalizedString("CancelConfirmTitle"),
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (result == System.Windows.MessageBoxResult.Yes)
+            {
+                StatusText = GetLocalizedString("StatusCancelling");
+                await _powerShellService.CancelAsync();
+                IsBuildRunning = false;
+                IsIndeterminate = false;
+                StatusText = GetLocalizedString("StatusCancelled");
+            }
+        }
+
+        /// <summary>
+        /// Pencere kapanırken çağrılır - işlem varsa engelle
+        /// </summary>
+        public bool HandleWindowClosing()
+        {
+            if (!IsBuildRunning) return true; // Kapatılabilir
+
+            var result = System.Windows.MessageBox.Show(
+                GetLocalizedString("CloseConfirmMessage"),
+                GetLocalizedString("CloseConfirmTitle"),
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (result == System.Windows.MessageBoxResult.Yes)
+            {
+                // İşlemi iptal et ve sonra kapat
+                Task.Run(async () =>
+                {
+                    await _powerShellService.CancelAsync();
+                    
+                    // UI thread'de uygulamayı kapat
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        IsBuildRunning = false;
+                        System.Windows.Application.Current.Shutdown();
+                    });
+                });
+                
+                return false; // Şimdilik kapatmayı engelle, async bitince kapanacak
+            }
+
+            return false; // Kapatmayı engelle
         }
 
         private async void StartBuild()
@@ -360,9 +448,11 @@ namespace tiny11_ui.ViewModels
             if (!CanStartBuild())
                 return;
 
+            IsBuildRunning = true;
+
             try
             {
-                StatusText = "İşlem başlatılıyor...";
+                StatusText = GetLocalizedString("StatusStarting");
                 IsIndeterminate = true;
                 
                 // Çalışma dizini oluştur
@@ -371,26 +461,61 @@ namespace tiny11_ui.ViewModels
                     Directory.CreateDirectory(ScratchPath);
                 }
 
-                LogOutput += "=== Tiny11 Oluşturma İşlemi Başladı ===\n";
-                LogOutput += $"ISO: {IsoPath}\n";
-                LogOutput += $"Çalışma Dizini: {ScratchPath}\n";
-                LogOutput += $"Sürüm: {SelectedEdition}\n";
-                LogOutput += $"Tür: {(IsCoreBuild ? "Core" : "Standart")}\n\n";
-
-                // İlk önce ISO'yu mount et
-                StatusText = "ISO mount ediliyor...";
-                LogOutput += "📀 ISO dosyası mount ediliyor...\n";
-                
-                var isoLetter = await _powerShellService.MountIsoAndGetDriveLetterAsync(IsoPath!);
-                if (string.IsNullOrEmpty(isoLetter))
+                // Kullanıcı seçeneklerini ComponentRemovalOptions'a dönüştür
+                var options = new ComponentRemovalOptions
                 {
-                    throw new Exception("ISO dosyası mount edilemedi!");
-                }
+                    // Uygulama kaldırma
+                    RemoveEdge = RemoveEdge,
+                    RemoveOneDrive = RemoveOneDrive,
+                    RemoveCortana = RemoveCortana,
+                    RemoveChat = RemoveChat,
+                    RemoveTeams = RemoveTeams,
+                    RemoveXbox = RemoveXbox,
+                    
+                    // Sistem optimizasyonları
+                    DisableTelemetry = DisableTelemetry,
+                    DisableWindowsUpdate = DisableWindowsUpdate,
+                    DisableDefender = DisableDefender,
+                    DisableSponsoredApps = DisableSponsoredApps,
+                    DisableReservedStorage = DisableReservedStorage,
+                    DisableBitLocker = DisableBitLocker,
+                    
+                    // Sistem gereksinimleri bypass
+                    BypassTPM = BypassTPM,
+                    BypassCPU = BypassCPU,
+                    BypassRAM = BypassRAM,
+                    BypassSecureBoot = BypassSecureBoot,
+                    
+                    // OOBE ayarları
+                    BypassMSAccount = BypassMSAccount,
+                    SkipNetworkConnection = SkipNetworkConnection,
+                    SkipPrivacyQuestions = SkipPrivacyQuestions
+                };
+
+                LogOutput += GetLocalizedString("LogBuildStarted") + "\n";
+                LogOutput += string.Format(GetLocalizedString("LogIsoPath"), IsoPath) + "\n";
+                LogOutput += string.Format(GetLocalizedString("LogWorkingDir"), ScratchPath) + "\n";
+                LogOutput += string.Format(GetLocalizedString("LogOutputPath"), OutputPath) + "\n";
+                LogOutput += string.Format(GetLocalizedString("LogEdition"), SelectedEdition) + "\n";
+                LogOutput += string.Format(GetLocalizedString("LogBuildType"), IsCoreBuild ? GetLocalizedString("LogBuildTypeCore") : GetLocalizedString("LogBuildTypeStandard")) + "\n\n";
                 
-                LogOutput += $"✅ ISO mount edildi: {isoLetter}:\n";
-                
-                var scratchLetter = ScratchPath.Substring(0, 1);
-                
+                // Seçilen ayarları logla
+                var yes = GetLocalizedString("LogYes");
+                var no = GetLocalizedString("LogNo");
+                LogOutput += GetLocalizedString("LogSelectedOptions") + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveEdge"), RemoveEdge ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveOneDrive"), RemoveOneDrive ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveCortana"), RemoveCortana ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveChat"), RemoveChat ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveTeams"), RemoveTeams ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveXbox"), RemoveXbox ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogDisableTelemetry"), DisableTelemetry ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogDisableUpdate"), DisableWindowsUpdate ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogDisableDefender"), DisableDefender ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogBypassTPM"), BypassTPM ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogBypassMSAccount"), BypassMSAccount ? yes : no) + "\n";
+                LogOutput += "\n";
+
                 // Edition index'i Windows sürümü string'inden çıkar
                 var editionIndex = 1; // Varsayılan
                 if (SelectedEdition!.Contains(" - "))
@@ -402,65 +527,62 @@ namespace tiny11_ui.ViewModels
                     }
                 }
 
-                LogOutput += $"📋 Edition Index: {editionIndex}\n";
-                LogOutput += $"💾 ISO Sürücü: {isoLetter}\n";
-                LogOutput += $"📁 Çalışma Sürücüsü: {scratchLetter}\n\n";
+                LogOutput += string.Format(GetLocalizedString("LogEditionIndex"), editionIndex) + "\n\n";
 
-                // PowerShell betiğinin bulunduğu klasör (tiny11builder script'lerinin olduğu yer)
-                var scriptPath = @"C:\Users\berke\Documents\tiny11builder-workspace";
+                StatusText = GetLocalizedString("LogProcessing");
                 
-                StatusText = "PowerShell betiği çalıştırılıyor...";
-                
-                var success = await _powerShellService.RunTiny11ScriptAsync(
-                    scriptPath, 
-                    isoLetter, 
-                    scratchLetter, 
+                // Yeni metodu kullan - kullanıcı seçenekleriyle
+                var success = await _powerShellService.RunTiny11WithOptionsAsync(
+                    IsoPath!,
+                    ScratchPath,
                     OutputPath,
-                    editionIndex, 
+                    editionIndex,
+                    options,
                     IsCoreBuild
                 );
                 
-                // Script path'den gerçek çıktı konumunu belirle
-                var outputDir = @"C:\Users\berke\Documents\tiny11builder-workspace";
-                var expectedIsoPath = Path.Combine(outputDir, "tiny11.iso");
-                
-                if (success && File.Exists(expectedIsoPath))
+                // Çıktı ISO kontrolü
+                if (success && File.Exists(OutputPath))
                 {
-                    StatusText = "✅ İşlem başarıyla tamamlandı!";
-                    LogOutput += "\n🎉 Tiny11 ISO dosyası başarıyla oluşturuldu!\n";
-                    LogOutput += $"📁 Çıktı konumu: {expectedIsoPath}\n";
+                    StatusText = GetLocalizedString("BuildCompleted");
+                    LogOutput += "\n" + GetLocalizedString("LogBuildSuccess") + "\n";
+                    LogOutput += string.Format(GetLocalizedString("LogOutputLocation"), OutputPath) + "\n";
                     
                     // Dosya boyutunu göster
-                    var fileInfo = new FileInfo(expectedIsoPath);
+                    var fileInfo = new FileInfo(OutputPath);
                     var sizeInGB = fileInfo.Length / (1024.0 * 1024.0 * 1024.0);
-                    LogOutput += $"💾 Dosya boyutu: {sizeInGB:F2} GB ({fileInfo.Length:N0} bytes)\n";
+                    LogOutput += string.Format(GetLocalizedString("LogFileSize"), sizeInGB.ToString("F2"), fileInfo.Length.ToString("N0")) + "\n";
                 }
                 else if (success)
                 {
-                    StatusText = "⚠️ İşlem tamamlandı ancak ISO bulunamadı!";
-                    LogOutput += "\n⚠️ Script tamamlandı ancak ISO dosyası bulunamadı.\n";
-                    LogOutput += $"🔍 Beklenen konum: {expectedIsoPath}\n";
-                    LogOutput += "📂 Lütfen tiny11builder-workspace klasörünü kontrol edin.\n";
+                    StatusText = GetLocalizedString("LogBuildFailedNoIso");
+                    LogOutput += "\n" + GetLocalizedString("LogBuildFailedNoIso") + "\n";
+                    LogOutput += string.Format(GetLocalizedString("LogExpectedLocation"), OutputPath) + "\n";
+                    LogOutput += GetLocalizedString("LogCheckWorkingDir") + "\n";
                 }
                 else
                 {
-                    StatusText = "❌ İşlem başarısız oldu!";
-                    LogOutput += "\n❌ İşlem tamamlanamadı. Lütfen hataları kontrol edin.\n";
+                    StatusText = GetLocalizedString("BuildFailed");
+                    LogOutput += "\n" + GetLocalizedString("LogBuildFailed") + "\n";
                 }
             }
             catch (Exception ex)
             {
-                LogOutput += $"HATA: {ex.Message}\n";
-                StatusText = "Hata oluştu!";
+                LogOutput += string.Format(GetLocalizedString("LogError"), ex.Message) + "\n";
+                StatusText = GetLocalizedString("Error");
             }
             finally
             {
+                IsBuildRunning = false;
                 IsIndeterminate = false;
             }
         }
 
         private bool CanStartBuild()
         {
+            // İşlem çalışıyorsa başlatılamaz
+            if (IsBuildRunning) return false;
+            
             var canStart = !string.IsNullOrEmpty(IsoPath) && 
                            !string.IsNullOrEmpty(ScratchPath) && 
                            !string.IsNullOrEmpty(OutputPath) && 
@@ -469,16 +591,16 @@ namespace tiny11_ui.ViewModels
             // Debug bilgisi
             if (!canStart)
             {
-                var missing = new List<string>();
+                var missing = new System.Collections.Generic.List<string>();
                 if (string.IsNullOrEmpty(IsoPath)) missing.Add("ISO");
-                if (string.IsNullOrEmpty(ScratchPath)) missing.Add("Çalışma Dizini");
-                if (string.IsNullOrEmpty(SelectedEdition)) missing.Add("Windows Sürümü");
+                if (string.IsNullOrEmpty(ScratchPath)) missing.Add(GetLocalizedString("WorkingDirectory"));
+                if (string.IsNullOrEmpty(SelectedEdition)) missing.Add(GetLocalizedString("WindowsEdition"));
                 
-                StatusText = $"Eksik: {string.Join(", ", missing)}";
+                StatusText = string.Format(GetLocalizedString("StatusMissing"), string.Join(", ", missing));
             }
             else
             {
-                StatusText = "Hazır - İşlemi başlatabilirsiniz";
+                StatusText = GetLocalizedString("StatusReady");
             }
             
             return canStart;
@@ -531,19 +653,19 @@ namespace tiny11_ui.ViewModels
                 {
                     SelectedEdition = WindowsEditions[0];
                     IsEditionSelectionEnabled = true;
-                    LogOutput += $"✅ {WindowsEditions.Count} Windows sürümü başarıyla yüklendi.\n";
+                    LogOutput += $"{WindowsEditions.Count} " + GetLocalizedString("EditionsLoaded") + "\n";
                 }
                 else
                 {
-                    LogOutput += "❌ Windows sürümü bulunamadı.\n";
+                    LogOutput += GetLocalizedString("NoEditionsFound") + "\n";
                 }
 
                 StatusText = "Hazır";
             }
             catch (Exception ex)
             {
-                LogOutput += $"❌ Windows sürümleri yüklenemedi: {ex.Message}\n";
-                LogOutput += "Varsayılan sürümler yükleniyor...\n";
+                LogOutput += string.Format(GetLocalizedString("LogError"), GetLocalizedString("EditionsLoadFailed") + ": " + ex.Message) + "\n";
+                LogOutput += GetLocalizedString("LoadingDefaultEditions") + "\n";
                 
                 // Hata durumunda tüm varsayılan sürümler
                 WindowsEditions.Clear();
@@ -575,15 +697,15 @@ namespace tiny11_ui.ViewModels
                 if (output.Contains("Exporting image"))
                     StatusText = "📤 Exporting image...";
                 else if (output.Contains("Unmounting image"))
-                    StatusText = "📤 Unmounting image...";
+                    StatusText = GetLocalizedString("StatusUnmounting");
                 else if (output.Contains("Cleanup complete"))
-                    StatusText = "🧹 Cleanup complete...";
+                    StatusText = GetLocalizedString("StatusCleanup");
                 else if (output.Contains("Creating ISO"))
-                    StatusText = "💿 Creating ISO...";
+                    StatusText = GetLocalizedString("StatusCreatingIso");
                 else if (output.Contains("Mounting"))
-                    StatusText = "📀 Mounting ISO...";
+                    StatusText = GetLocalizedString("StatusMounting");
                 else if (output.Contains("Copying"))
-                    StatusText = "📋 Copying files...";
+                    StatusText = GetLocalizedString("StatusCopying");
             });
         }
 
@@ -592,7 +714,7 @@ namespace tiny11_ui.ViewModels
             // UI thread'de çalıştır
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                LogOutput += $"❌ HATA: {error}\n";
+                LogOutput += string.Format(GetLocalizedString("LogError"), error) + "\n";
             });
         }
 
@@ -612,7 +734,7 @@ namespace tiny11_ui.ViewModels
             // ISO'yu unmount et
             if (!string.IsNullOrEmpty(IsoPath))
             {
-                LogOutput += "📀 ISO unmount ediliyor...\n";
+                LogOutput += GetLocalizedString("LogIsoUnmounting") + "\n";
                 await _powerShellService.UnmountIsoAsync(IsoPath);
             }
             
@@ -787,7 +909,7 @@ namespace tiny11_ui.ViewModels
             
             // Log'a dil değişikliği mesajı ekle
             var message = GetLocalizedString(languageCode == "tr-TR" ? "LanguageChangedTR" : "LanguageChangedEN");
-            LogOutput += $"🌍 {message}\n";
+            LogOutput += $"{message}\n";
             
             // Dialog'ları da güncelle
             UpdateDialogTexts();
@@ -795,17 +917,17 @@ namespace tiny11_ui.ViewModels
 
         private void UpdateStartupMessage()
         {
-            LogOutput = $"🚀 {GetLocalizedString("AppStarted")}\n";
+            LogOutput = GetLocalizedString("AppStarted") + "\n";
             if (IsRunningAsAdministrator())
             {
-                LogOutput += $"✅ {GetLocalizedString("AdminMode")}\n";
+                LogOutput += GetLocalizedString("AdminMode") + "\n";
             }
             else
             {
-                LogOutput += $"⚠️  {GetLocalizedString("UserMode")}\n";
-                LogOutput += $"💡 {GetLocalizedString("AdminRecommendation")}\n";
+                LogOutput += GetLocalizedString("UserMode") + "\n";
+                LogOutput += GetLocalizedString("AdminRecommendation") + "\n";
             }
-            LogOutput += $"📁 {GetLocalizedString("DefaultWorkingDir")}: {ScratchPath}\n\n";
+            LogOutput += GetLocalizedString("DefaultWorkingDir") + ": " + ScratchPath + "\n\n";
         }
 
         private void UpdateDialogTexts()

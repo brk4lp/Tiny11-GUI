@@ -1,10 +1,12 @@
 # Tiny11 GUI
 
-This project, `tiny11-ui`, is a graphical user interface (GUI) wrapper for the original [tiny11builder](https://github.com/ntdevlabs/tiny11builder) PowerShell scripts created by [ntdevlabs](https://github.com/ntdevlabs). 
+A modern graphical user interface (GUI) wrapper for the original [tiny11builder](https://github.com/ntdevlabs/tiny11builder) PowerShell scripts created by [ntdevlabs](https://github.com/ntdevlabs). 
 
 **Credit:** All core functionality is provided by the original tiny11builder scripts. This project only adds a modern WPF-based UI to make the tool more accessible.
 
-The UI is built using WPF (Windows Presentation Foundation) and follows the MVVM (Model-View-ViewModel) design pattern.
+Built with WPF (Windows Presentation Foundation) and .NET 8.0, following the MVVM (Model-View-ViewModel) design pattern.
+
+![Tiny11 GUI Screenshot](screenshot.png)
 
 ## Original Project
 
@@ -12,44 +14,95 @@ The UI is built using WPF (Windows Presentation Foundation) and follows the MVVM
 - **Creator:** ntdevlabs
 - **License:** Check the original repository for licensing information
 
-This GUI wrapper is designed to provide a simple and elegant user interface for the `tiny11maker.ps1` and `tiny11Coremaker.ps1` scripts, which automate the creation of a lightweight Windows 11 image.
+This GUI wrapper provides a simple and elegant user interface for creating lightweight Windows 11 images.
+
+## Requirements
+
+- Windows 10/11
+- .NET 8.0 Runtime
+- Administrator privileges (required for WIM mounting operations)
+- Windows ADK (for oscdimg.exe - ISO creation)
 
 ## Setup Instructions
 
-1. Clone the repository to your local machine.
-2. Open the solution in your preferred IDE.
-3. Restore any necessary NuGet packages.
-4. Build the solution to ensure all dependencies are resolved.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/tiny11-ui.git
+   ```
+2. Open `tiny11-ui.sln` in Visual Studio 2022 or later
+3. Restore NuGet packages
+4. Build the solution (`Ctrl+Shift+B`)
 
 ## Usage
 
-<img width="761" height="870" alt="resim" src="https://github.com/user-attachments/assets/e81c4e37-18b8-4fb4-8124-851e75d5d24d" />
-
-To run the application, execute the following steps:
-
-
-1. Launch the application from your IDE or by running the compiled executable.
-2. Use the UI to select the Windows 11 ISO file and configure the desired settings.
-3. Click the "Create Image" button to start the process.
+1. **Run as Administrator** - Right-click the executable and select "Run as administrator"
+2. Select your Windows 11 ISO file using the "Browse" button
+3. Choose the Windows edition from the dropdown
+4. Set the output path for your tiny11 ISO
+5. Configure options:
+   - **Presets**: Choose from Minimal, Balanced, Gaming, or Enterprise configurations
+   - **Apps to Remove**: Select which built-in apps to remove (Edge, OneDrive, Cortana, Teams, Xbox, etc.)
+   - **System Features**: Disable telemetry, Windows Update, Defender, sponsored apps, etc.
+   - **System Requirements Bypass**: Skip TPM, CPU, RAM, and Secure Boot checks
+   - **Installation Process Bypass**: Skip Microsoft Account, network connection, and privacy questions
+6. Click **"Start Build Tiny11"** to begin the process
+7. Monitor progress in the log panel
 
 ## Features
 
-- **User-friendly Interface**: Modern WPF-based UI for easy configuration
-- **Multi-Language Support**: Fully localized interface supporting:
+- **Modern UI**: Clean WPF-based interface with fixed 680x920 window size
+- **Multi-Language Support**: 
   - 🇬🇧 English (default)
   - 🇹🇷 Turkish (Türkçe)
-  - Dynamic language switching without application restart
-- **Advanced Customization Options**:
-  - Preset configurations (Minimal, Balanced, Gaming, Enterprise)
-  - Selective app removal (Edge, OneDrive, Cortana, Teams, Xbox, etc.)
-  - System optimization toggles (Telemetry, Windows Update, Defender, etc.)
-  - System requirements bypass (TPM, Secure Boot, CPU, RAM)
-  - Installation process customization (MS Account, Network, Privacy)
-- **Real-time Progress Tracking**: Live output from PowerShell script execution
-- **Automatic ISO Management**: Mount and unmount ISO files automatically
-- **Windows Edition Selection**: Choose from available Windows 11 editions in your ISO
-- **Custom Output Path**: Select where to save the final tiny11 ISO file
-- **Administrator Privilege Detection**: Automatic detection and guidance for admin rights
+  - Language can be changed at runtime
+- **Preset Configurations**: Quick setup with predefined removal/bypass options
+- **Advanced Customization**:
+  - Selective app removal (Edge, OneDrive, Cortana, Chat, Teams, Xbox)
+  - System optimization (Telemetry, Windows Update, Defender, Sponsored Apps, Reserved Storage, BitLocker)
+  - System requirements bypass (TPM, CPU, RAM, Secure Boot)
+  - Installation process bypass (MS Account, Network, Privacy questions)
+- **Real-time Logging**: Live output with auto-scroll during build process
+- **Automatic ISO Management**: Handles mounting/unmounting of ISO and WIM images
+- **Windows Edition Selection**: Choose from all available editions in your ISO
+- **Unique Build Directories**: Uses timestamp-based folders to avoid conflicts
+- **Error Handling**: Filtered output to show relevant progress information
+
+## Project Structure
+
+```
+tiny11-ui/
+├── App.xaml                    # Application entry point
+├── App.xaml.cs
+├── app.manifest                # Admin privileges manifest
+├── tiny11-ui.csproj           # Project file (.NET 8.0-windows)
+├── Resources/
+│   ├── Strings.en-US.txt      # English localization
+│   └── Strings.tr-TR.txt      # Turkish localization
+└── src/
+    ├── Converters/
+    │   └── BoolConverters.cs  # Boolean to visibility converters
+    ├── Models/
+    │   ├── AppSettings.cs     # Application settings model
+    │   └── ComponentRemovalOptions.cs
+    ├── Services/
+    │   ├── LocalizationService.cs    # Multi-language support
+    │   └── PowerShellService.cs      # PowerShell script generation & execution
+    ├── ViewModels/
+    │   ├── BaseViewModel.cs          # INotifyPropertyChanged base
+    │   ├── LocalizedStrings.cs       # Localization bindings
+    │   └── MainViewModel.cs          # Main window logic
+    └── Views/
+        ├── MainWindow.xaml           # Main UI layout
+        └── MainWindow.xaml.cs
+```
+
+## Technical Details
+
+- **Framework**: .NET 8.0 Windows (WPF)
+- **Architecture**: MVVM pattern
+- **PowerShell Integration**: Dynamically generates and executes PowerShell scripts
+- **WIM Operations**: Uses DISM for mounting/unmounting Windows images
+- **ISO Creation**: Uses oscdimg.exe from Windows ADK
 
 ## Contributing
 
@@ -58,3 +111,8 @@ Contributions are welcome! Please submit a pull request or open an issue for any
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
+
+## Acknowledgments
+
+- [ntdevlabs](https://github.com/ntdevlabs) for the original tiny11builder scripts
+- Microsoft for WPF and .NET

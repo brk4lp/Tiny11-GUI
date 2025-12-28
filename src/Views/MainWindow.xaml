@@ -1,129 +1,296 @@
-﻿ <Window x:Class="tiny11_ui.Views.MainWindow"
+﻿<Window x:Class="tiny11_ui.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:tiny11_ui.ViewModels"
+        xmlns:converters="clr-namespace:tiny11_ui.Converters"
         mc:Ignorable="d"
-        Title="Tiny11 GUI" Height="700" Width="900" WindowStartupLocation="CenterScreen">
+        Title="Tiny11 GUI" 
+        Height="920" Width="680" 
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    
     <Window.DataContext>
         <viewModels:MainViewModel />
     </Window.DataContext>
-    <Grid Margin="20">
+    
+    <Window.Resources>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+        
+        <Style x:Key="CompactTextBox" TargetType="TextBox">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        
+        <Style x:Key="CompactButton" TargetType="Button">
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="MinWidth" Value="60"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
+        </Style>
+        
+        <Style x:Key="CompactCheckBox" TargetType="CheckBox">
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        
+        <Style x:Key="CompactRadioButton" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        
+        <Style x:Key="CompactGroupBox" TargetType="GroupBox">
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Padding" Value="20,6"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Background" Value="#0078D4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="MinWidth" Value="150"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style x:Key="DangerButton" TargetType="Button">
+            <Setter Property="Padding" Value="15,6"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Background" Value="#dc3545"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="MinWidth" Value="80"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="10,0,0,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Üst kısımda dil seçici -->
-        <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Right" Margin="0,0,0,10">
-            <Label Content="🌐" VerticalAlignment="Center" FontSize="16" Margin="0,0,5,0"/>
-            <ComboBox ItemsSource="{Binding AvailableLanguages}" SelectedItem="{Binding SelectedLanguage}" Width="120" VerticalAlignment="Center" 
-                      ToolTip="{Binding LocalizedTooltips.LanguageSelector}"/>
-        </StackPanel>
-
-        <Label Content="{Binding LocalizedLabels.IsoSelection}" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0"/>
-        <TextBox Text="{Binding IsoPath}" Grid.Row="1" Grid.Column="1" VerticalContentAlignment="Center" IsReadOnly="True"/>
-        <Button Command="{Binding BrowseIsoCommand}" Content="{Binding LocalizedButtons.BrowseButton}" Grid.Row="1" Grid.Column="2" Margin="10,0,0,0" Padding="15,5"/>
-        <Label Content="{Binding LocalizedLabels.WorkingDirectory}" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,10,10,0"/>
-        <TextBox Text="{Binding ScratchPath}" Grid.Row="2" Grid.Column="1" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,10,0,0"/>
-        <Button Command="{Binding BrowseScratchCommand}" Content="{Binding LocalizedButtons.SelectButton}" Grid.Row="2" Grid.Column="2" Margin="10,10,0,0" Padding="15,5"/>
         
-        <Label Content="{Binding LocalizedLabels.OutputPath}" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,10,10,0"/>
-        <TextBox Text="{Binding OutputPath}" Grid.Row="3" Grid.Column="1" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,10,0,0"/>
-        <Button Command="{Binding BrowseOutputCommand}" Content="{Binding LocalizedButtons.SaveButton}" Grid.Row="3" Grid.Column="2" Margin="10,10,0,0" Padding="15,5"/>
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,0,0,1" Padding="10,6">
+            <Grid>
+                <TextBlock Text="Tiny11 Builder" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#333"/>
+                <ComboBox ItemsSource="{Binding AvailableLanguages}" 
+                          SelectedItem="{Binding SelectedLanguage}" 
+                          Width="110" Height="22" FontSize="11"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
         
-        <StackPanel Orientation="Horizontal" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,15,0,0">
-            <Label Content="{Binding LocalizedLabels.ImageType}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <RadioButton Content="{Binding LocalizedLabels.StandardType}" IsChecked="{Binding IsStandardBuild}" GroupName="ImageType" VerticalAlignment="Center" Margin="0,0,20,0"/>
-            <RadioButton Content="{Binding LocalizedLabels.CoreType}" IsChecked="{Binding IsCoreBuild}" GroupName="ImageType" VerticalAlignment="Center"/>
-        </StackPanel>
-        <Label Content="{Binding LocalizedLabels.WindowsEdition}" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,10,10,0"/>
-        <ComboBox ItemsSource="{Binding WindowsEditions}" SelectedItem="{Binding SelectedEdition}" IsEnabled="{Binding IsEditionSelectionEnabled}" Grid.Row="5" Grid.Column="1" VerticalContentAlignment="Center" Margin="0,10,0,0"/>
-        
-        <Expander Header="{Binding LocalizedHeaders.AdvancedOptions}" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,15,0,0" IsExpanded="False">
-            <Border BorderBrush="#E0E0E0" BorderThickness="1" Background="#FAFAFA" Margin="0,5,0,0" Padding="15">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="100"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Row 0: ISO Selection -->
+                <GroupBox Header="{Binding LocalizedLabels.IsoSelection}" Grid.Row="0" Style="{StaticResource CompactGroupBox}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding IsoPath}" Grid.Column="0" Style="{StaticResource CompactTextBox}" IsReadOnly="True"/>
+                        <Button Command="{Binding BrowseIsoCommand}" Content="{Binding LocalizedButtons.BrowseButton}" Grid.Column="1" Style="{StaticResource CompactButton}"/>
+                    </Grid>
+                </GroupBox>
+                
+                <!-- Row 1: Working Dir & Output in single row -->
+                <Grid Grid.Row="1" Margin="0,0,0,5">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-
-                    <GroupBox Header="{Binding LocalizedHeaders.PresetSelection}" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
-                        <StackPanel Orientation="Horizontal" Margin="5">
-                            <RadioButton Content="{Binding LocalizedPresets.Minimal}" IsChecked="{Binding IsMinimalPreset}" GroupName="Preset" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.MinimalPreset}"/>
-                            <RadioButton Content="{Binding LocalizedPresets.Balanced}" IsChecked="{Binding IsBalancedPreset}" GroupName="Preset" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.BalancedPreset}"/>
-                            <RadioButton Content="{Binding LocalizedPresets.Gaming}" IsChecked="{Binding IsGamingPreset}" GroupName="Preset" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.GamingPreset}"/>
-                            <RadioButton Content="{Binding LocalizedPresets.Enterprise}" IsChecked="{Binding IsEnterprisePreset}" GroupName="Preset" ToolTip="{Binding LocalizedTooltips.EnterprisePreset}"/>
-                        </StackPanel>
+                    
+                    <GroupBox Header="{Binding LocalizedLabels.WorkingDirectory}" Grid.Column="0" Style="{StaticResource CompactGroupBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding ScratchPath}" Grid.Column="0" Style="{StaticResource CompactTextBox}" IsReadOnly="True"/>
+                            <Button Command="{Binding BrowseScratchCommand}" Content="{Binding LocalizedButtons.SelectButton}" Grid.Column="1" Style="{StaticResource CompactButton}"/>
+                        </Grid>
                     </GroupBox>
-
-                    <GroupBox Header="{Binding LocalizedHeaders.AppsToRemove}" Grid.Row="1" Grid.Column="0" Margin="0,0,10,10">
-                        <StackPanel Margin="5">
-                            <CheckBox IsChecked="{Binding RemoveEdge}" Content="{Binding LocalizedApps.MicrosoftEdge}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding RemoveOneDrive}" Content="{Binding LocalizedApps.OneDrive}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding RemoveCortana}" Content="{Binding LocalizedApps.Cortana}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding RemoveChat}" Content="{Binding LocalizedApps.WindowsChat}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding RemoveTeams}" Content="{Binding LocalizedApps.MicrosoftTeams}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding RemoveXbox}" Content="{Binding LocalizedApps.XboxApps}" Margin="0,2"/>
-                        </StackPanel>
-                    </GroupBox>
-
-                    <GroupBox Header="{Binding LocalizedHeaders.SystemFeaturesToDisable}" Grid.Row="1" Grid.Column="1" Margin="10,0,0,10">
-                        <StackPanel Margin="5">
-                            <CheckBox IsChecked="{Binding DisableTelemetry}" Content="{Binding LocalizedSystemFeatures.Telemetry}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding DisableWindowsUpdate}" Content="{Binding LocalizedSystemFeatures.WindowsUpdate}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding DisableDefender}" Content="{Binding LocalizedSystemFeatures.WindowsDefender}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding DisableSponsoredApps}" Content="{Binding LocalizedSystemFeatures.SponsoredApps}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding DisableReservedStorage}" Content="{Binding LocalizedSystemFeatures.ReservedStorage}" Margin="0,2"/>
-                            <CheckBox IsChecked="{Binding DisableBitLocker}" Content="{Binding LocalizedSystemFeatures.BitLocker}" Margin="0,2"/>
-                        </StackPanel>
-                    </GroupBox>
-
-                    <GroupBox Header="{Binding LocalizedHeaders.SystemRequirementsBypass}" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
-                        <StackPanel Orientation="Horizontal" Margin="5">
-                            <CheckBox IsChecked="{Binding BypassTPM}" Content="{Binding LocalizedSystemRequirements.TPMRequirement}" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.TPMBypass}"/>
-                            <CheckBox IsChecked="{Binding BypassCPU}" Content="{Binding LocalizedSystemRequirements.CPUCompatibility}" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.CPUBypass}"/>
-                            <CheckBox IsChecked="{Binding BypassRAM}" Content="{Binding LocalizedSystemRequirements.RAMRequirement}" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.RAMBypass}"/>
-                            <CheckBox IsChecked="{Binding BypassSecureBoot}" Content="{Binding LocalizedSystemRequirements.SecureBootRequirement}" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.SecureBootBypass}"/>
-                        </StackPanel>
-                    </GroupBox>
-
-                    <GroupBox Header="{Binding LocalizedHeaders.InstallationProcessBypass}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2">
-                        <StackPanel Orientation="Horizontal" Margin="5">
-                            <CheckBox IsChecked="{Binding BypassMSAccount}" Content="{Binding LocalizedInstallationProcess.MicrosoftAccountRequirement}" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.MSAccountBypass}"/>
-                            <CheckBox IsChecked="{Binding SkipNetworkConnection}" Content="{Binding LocalizedInstallationProcess.NetworkConnectionCheck}" Margin="0,0,15,0" ToolTip="{Binding LocalizedTooltips.NetworkBypass}"/>
-                            <CheckBox IsChecked="{Binding SkipPrivacyQuestions}" Content="{Binding LocalizedInstallationProcess.PrivacySettings}" ToolTip="{Binding LocalizedTooltips.PrivacyBypass}"/>
-                        </StackPanel>
+                    
+                    <GroupBox Header="{Binding LocalizedLabels.OutputPath}" Grid.Column="2" Style="{StaticResource CompactGroupBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding OutputPath}" Grid.Column="0" Style="{StaticResource CompactTextBox}" IsReadOnly="True"/>
+                            <Button Command="{Binding BrowseOutputCommand}" Content="{Binding LocalizedButtons.SaveButton}" Grid.Column="1" Style="{StaticResource CompactButton}"/>
+                        </Grid>
                     </GroupBox>
                 </Grid>
-            </Border>
-        </Expander>
+                
+                <!-- Row 2: Image Type & Edition in single row -->
+                <Grid Grid.Row="2" Margin="0,0,0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <GroupBox Header="{Binding LocalizedLabels.ImageType}" Grid.Column="0" Style="{StaticResource CompactGroupBox}">
+                        <StackPanel Orientation="Horizontal" Margin="5,2">
+                            <RadioButton Content="{Binding LocalizedLabels.StandardType}" IsChecked="{Binding IsStandardBuild}" GroupName="ImageType" Style="{StaticResource CompactRadioButton}"/>
+                            <RadioButton Content="{Binding LocalizedLabels.CoreType}" IsChecked="{Binding IsCoreBuild}" GroupName="ImageType" Style="{StaticResource CompactRadioButton}"/>
+                        </StackPanel>
+                    </GroupBox>
+                    
+                    <GroupBox Header="{Binding LocalizedLabels.WindowsEdition}" Grid.Column="2" Style="{StaticResource CompactGroupBox}">
+                        <ComboBox ItemsSource="{Binding WindowsEditions}" SelectedItem="{Binding SelectedEdition}" IsEnabled="{Binding IsEditionSelectionEnabled}" Height="24" FontSize="11" Margin="2"/>
+                    </GroupBox>
+                </Grid>
+                
+                <!-- Row 3: Advanced Options (Always visible) -->
+                <GroupBox Header="{Binding LocalizedHeaders.AdvancedOptions}" Grid.Row="3" Margin="0,0,0,5" FontSize="11" Padding="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Presets -->
+                        <GroupBox Header="{Binding LocalizedHeaders.PresetSelection}" Grid.Row="0" Style="{StaticResource CompactGroupBox}">
+                            <WrapPanel Margin="3">
+                                <RadioButton Content="{Binding LocalizedPresets.Minimal}" IsChecked="{Binding IsMinimalPreset}" GroupName="Preset" Style="{StaticResource CompactRadioButton}"/>
+                                <RadioButton Content="{Binding LocalizedPresets.Balanced}" IsChecked="{Binding IsBalancedPreset}" GroupName="Preset" Style="{StaticResource CompactRadioButton}"/>
+                                <RadioButton Content="{Binding LocalizedPresets.Gaming}" IsChecked="{Binding IsGamingPreset}" GroupName="Preset" Style="{StaticResource CompactRadioButton}"/>
+                                <RadioButton Content="{Binding LocalizedPresets.Enterprise}" IsChecked="{Binding IsEnterprisePreset}" GroupName="Preset" Style="{StaticResource CompactRadioButton}"/>
+                            </WrapPanel>
+                        </GroupBox>
+                        
+                        <!-- Apps & Features - 2 columns -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <GroupBox Header="{Binding LocalizedHeaders.AppsToRemove}" Grid.Column="0" Style="{StaticResource CompactGroupBox}">
+                                <StackPanel Margin="3">
+                                    <CheckBox IsChecked="{Binding RemoveEdge}" Content="{Binding LocalizedApps.MicrosoftEdge}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding RemoveOneDrive}" Content="{Binding LocalizedApps.OneDrive}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding RemoveCortana}" Content="{Binding LocalizedApps.Cortana}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding RemoveChat}" Content="{Binding LocalizedApps.WindowsChat}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding RemoveTeams}" Content="{Binding LocalizedApps.MicrosoftTeams}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding RemoveXbox}" Content="{Binding LocalizedApps.XboxApps}" Style="{StaticResource CompactCheckBox}"/>
+                                </StackPanel>
+                            </GroupBox>
+                            
+                            <GroupBox Header="{Binding LocalizedHeaders.SystemFeaturesToDisable}" Grid.Column="2" Style="{StaticResource CompactGroupBox}">
+                                <StackPanel Margin="3">
+                                    <CheckBox IsChecked="{Binding DisableTelemetry}" Content="{Binding LocalizedSystemFeatures.Telemetry}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding DisableWindowsUpdate}" Content="{Binding LocalizedSystemFeatures.WindowsUpdate}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding DisableDefender}" Content="{Binding LocalizedSystemFeatures.WindowsDefender}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding DisableSponsoredApps}" Content="{Binding LocalizedSystemFeatures.SponsoredApps}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding DisableReservedStorage}" Content="{Binding LocalizedSystemFeatures.ReservedStorage}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding DisableBitLocker}" Content="{Binding LocalizedSystemFeatures.BitLocker}" Style="{StaticResource CompactCheckBox}"/>
+                                </StackPanel>
+                            </GroupBox>
+                        </Grid>
+                        
+                        <!-- System Requirements Bypass -->
+                        <GroupBox Header="{Binding LocalizedHeaders.SystemRequirementsBypass}" Grid.Row="2" Style="{StaticResource CompactGroupBox}">
+                            <WrapPanel Margin="3">
+                                <CheckBox IsChecked="{Binding BypassTPM}" Content="{Binding LocalizedSystemRequirements.TPMRequirement}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding BypassCPU}" Content="{Binding LocalizedSystemRequirements.CPUCompatibility}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding BypassRAM}" Content="{Binding LocalizedSystemRequirements.RAMRequirement}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding BypassSecureBoot}" Content="{Binding LocalizedSystemRequirements.SecureBootRequirement}" Style="{StaticResource CompactCheckBox}"/>
+                            </WrapPanel>
+                        </GroupBox>
+                        
+                        <!-- Installation Process Bypass -->
+                        <GroupBox Header="{Binding LocalizedHeaders.InstallationProcessBypass}" Grid.Row="3" Style="{StaticResource CompactGroupBox}">
+                            <WrapPanel Margin="3">
+                                <CheckBox IsChecked="{Binding BypassMSAccount}" Content="{Binding LocalizedInstallationProcess.MicrosoftAccountRequirement}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding SkipNetworkConnection}" Content="{Binding LocalizedInstallationProcess.NetworkConnectionCheck}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding SkipPrivacyQuestions}" Content="{Binding LocalizedInstallationProcess.PrivacySettings}" Style="{StaticResource CompactCheckBox}"/>
+                            </WrapPanel>
+                        </GroupBox>
+                    </Grid>
+                </GroupBox>
+                
+                <!-- Row 4: Buttons -->
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,8">
+                    <Button Command="{Binding StartBuildCommand}" 
+                            Content="{Binding LocalizedButtons.StartBuildButton}" 
+                            IsEnabled="{Binding IsBuildRunning, Converter={StaticResource InverseBoolConverter}}"
+                            Style="{StaticResource PrimaryButton}"/>
+                    <Button Command="{Binding CancelBuildCommand}" 
+                            Content="{Binding LocalizedButtons.CancelButton}" 
+                            Visibility="{Binding IsBuildRunning, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Style="{StaticResource DangerButton}"/>
+                </StackPanel>
+                
+                <!-- Row 5: Log Output -->
+                <GroupBox Header="Log" Grid.Row="6" Style="{StaticResource CompactGroupBox}">
+                    <TextBox x:Name="LogTextBox"
+                             Text="{Binding LogOutput, Mode=OneWay}" 
+                             IsReadOnly="True" 
+                             VerticalScrollBarVisibility="Auto" 
+                             HorizontalScrollBarVisibility="Auto" 
+                             FontFamily="Consolas" 
+                             FontSize="10"
+                             TextWrapping="NoWrap"
+                             Height="150"
+                             MaxHeight="150"
+                             Background="#1e1e1e"
+                             Foreground="#d4d4d4"
+                             Padding="5"
+                             BorderThickness="0"
+                             TextChanged="LogTextBox_TextChanged"/>
+                </GroupBox>
+            </Grid>
+        </ScrollViewer>
         
-        <Button Command="{Binding StartBuildCommand}" Content="{Binding LocalizedButtons.StartBuildButton}" Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Padding="0,10" FontWeight="Bold" Background="#0078D4" Foreground="White" Margin="0,15,0,0"/>
-        <TextBox Text="{Binding LogOutput, Mode=OneWay}" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,15,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" TextWrapping="Wrap"/>
-        <StatusBar Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,5,0,0">
-            <StatusBarItem>
-                <TextBlock Text="{Binding StatusText}" FontWeight="Bold"/>
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="2" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,1,0,0" Height="22">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+            <StatusBarItem Grid.Column="0">
+                <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold" Margin="3,0"/>
+            </StatusBarItem>
+            <StatusBarItem Grid.Column="1" HorizontalAlignment="Right">
+                <TextBlock Text="v1.0" FontSize="10" Foreground="#666" Margin="5,0"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>
