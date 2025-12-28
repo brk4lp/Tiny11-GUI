@@ -4,24 +4,28 @@ A modern graphical user interface (GUI) wrapper for the original [tiny11builder]
 
 **Credit:** All core functionality is provided by the original tiny11builder scripts. This project only adds a modern WPF-based UI to make the tool more accessible.
 
-Built with WPF (Windows Presentation Foundation) and .NET 8.0, following the MVVM (Model-View-ViewModel) design pattern.
+Built with WPF (Windows Presentation Foundation) and .NET 8.0.
 
 <img width="661" height="912" alt="resim" src="https://github.com/user-attachments/assets/6ee45226-d3c3-4266-9289-bb0bba54458a" />
 
-## Original Project
+## Features
 
-- **Original Repository:** [https://github.com/ntdevlabs/tiny11builder](https://github.com/ntdevlabs/tiny11builder)
-- **Creator:** ntdevlabs
-- **License:** Check the original repository for licensing information
-
-This GUI wrapper provides a simple and elegant user interface for creating lightweight Windows 11 images.
-
-## Requirements
-
-- Windows 10/11
-- .NET 8.0 Runtime
-- Administrator privileges (required for WIM mounting operations)
-- Windows ADK (for oscdimg.exe - ISO creation)
+- **Modern UI**: Clean WPF-based interface with fixed 680x920 window size
+- **Multi-Language Support**: 
+  - 🇬🇧 English (default)
+  - 🇹🇷 Turkish (Türkçe)
+  - Language can be changed at runtime
+- **Preset Configurations**: Quick setup with predefined removal/bypass options
+- **Advanced Customization**:
+  - Selective app removal (Edge, OneDrive, Cortana, Chat, Teams, Xbox)
+  - System optimization (Telemetry, Windows Update, Defender, Sponsored Apps, Reserved Storage, BitLocker)
+  - System requirements bypass (TPM, CPU, RAM, Secure Boot)
+  - Installation process bypass (MS Account, Network, Privacy questions)
+- **Real-time Logging**: Live output with auto-scroll during build process
+- **Automatic ISO Management**: Handles mounting/unmounting of ISO and WIM images
+- **Windows Edition Selection**: Choose from all available editions in your ISO
+- **Unique Build Directories**: Uses timestamp-based folders to avoid conflicts
+- **Error Handling**: Filtered output to show relevant progress information
 
 ## Setup Instructions
 
@@ -47,25 +51,15 @@ This GUI wrapper provides a simple and elegant user interface for creating light
    - **Installation Process Bypass**: Skip Microsoft Account, network connection, and privacy questions
 6. Click **"Start Build Tiny11"** to begin the process
 7. Monitor progress in the log panel
+   
 
-## Features
+## Requirements
 
-- **Modern UI**: Clean WPF-based interface with fixed 680x920 window size
-- **Multi-Language Support**: 
-  - 🇬🇧 English (default)
-  - 🇹🇷 Turkish (Türkçe)
-  - Language can be changed at runtime
-- **Preset Configurations**: Quick setup with predefined removal/bypass options
-- **Advanced Customization**:
-  - Selective app removal (Edge, OneDrive, Cortana, Chat, Teams, Xbox)
-  - System optimization (Telemetry, Windows Update, Defender, Sponsored Apps, Reserved Storage, BitLocker)
-  - System requirements bypass (TPM, CPU, RAM, Secure Boot)
-  - Installation process bypass (MS Account, Network, Privacy questions)
-- **Real-time Logging**: Live output with auto-scroll during build process
-- **Automatic ISO Management**: Handles mounting/unmounting of ISO and WIM images
-- **Windows Edition Selection**: Choose from all available editions in your ISO
-- **Unique Build Directories**: Uses timestamp-based folders to avoid conflicts
-- **Error Handling**: Filtered output to show relevant progress information
+- Windows 10/11
+- .NET 8.0 Runtime
+- Administrator privileges (required for WIM mounting operations)
+- Windows ADK (for oscdimg.exe - ISO creation)
+
 
 ## Technical Details
 
