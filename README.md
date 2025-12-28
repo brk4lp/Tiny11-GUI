@@ -6,7 +6,7 @@ A modern graphical user interface (GUI) wrapper for the original [tiny11builder]
 
 Built with WPF (Windows Presentation Foundation) and .NET 8.0, following the MVVM (Model-View-ViewModel) design pattern.
 
-![Tiny11 GUI Screenshot](screenshot.png)
+<img width="661" height="912" alt="resim" src="https://github.com/user-attachments/assets/6ee45226-d3c3-4266-9289-bb0bba54458a" />
 
 ## Original Project
 
@@ -66,35 +66,6 @@ This GUI wrapper provides a simple and elegant user interface for creating light
 - **Windows Edition Selection**: Choose from all available editions in your ISO
 - **Unique Build Directories**: Uses timestamp-based folders to avoid conflicts
 - **Error Handling**: Filtered output to show relevant progress information
-
-## Project Structure
-
-```
-tiny11-ui/
-├── App.xaml                    # Application entry point
-├── App.xaml.cs
-├── app.manifest                # Admin privileges manifest
-├── tiny11-ui.csproj           # Project file (.NET 8.0-windows)
-├── Resources/
-│   ├── Strings.en-US.txt      # English localization
-│   └── Strings.tr-TR.txt      # Turkish localization
-└── src/
-    ├── Converters/
-    │   └── BoolConverters.cs  # Boolean to visibility converters
-    ├── Models/
-    │   ├── AppSettings.cs     # Application settings model
-    │   └── ComponentRemovalOptions.cs
-    ├── Services/
-    │   ├── LocalizationService.cs    # Multi-language support
-    │   └── PowerShellService.cs      # PowerShell script generation & execution
-    ├── ViewModels/
-    │   ├── BaseViewModel.cs          # INotifyPropertyChanged base
-    │   ├── LocalizedStrings.cs       # Localization bindings
-    │   └── MainViewModel.cs          # Main window logic
-    └── Views/
-        ├── MainWindow.xaml           # Main UI layout
-        └── MainWindow.xaml.cs
-```
 
 ## Technical Details
 
