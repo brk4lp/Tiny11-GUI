@@ -275,14 +275,14 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"$dismPath = 'dism'");
             sb.AppendLine(@"try {");
             sb.AppendLine(@"    $systemDismPath = Join-Path $env:SystemRoot 'System32\dism.exe'");
-            sb.AppendLine(@"    $systemDismVersion = [System.Version](Get-Item $systemDismPath).VersionInfo.FileVersion");
+            sb.AppendLine(@"    $systemDismVersion = (Get-Item $systemDismPath).VersionInfo.FileVersionRaw");
             sb.AppendLine(@"    $adkDismCandidates = @(");
             sb.AppendLine(@"        'C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\DISM\dism.exe'");
             sb.AppendLine(@"        'C:\Program Files\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\DISM\dism.exe'");
             sb.AppendLine(@"    )");
             sb.AppendLine(@"    foreach ($candidate in $adkDismCandidates) {");
             sb.AppendLine(@"        if (Test-Path $candidate) {");
-            sb.AppendLine(@"            $adkDismVersion = [System.Version](Get-Item $candidate).VersionInfo.FileVersion");
+            sb.AppendLine(@"            $adkDismVersion = (Get-Item $candidate).VersionInfo.FileVersionRaw");
             sb.AppendLine(@"            if ($adkDismVersion -gt $systemDismVersion) {");
             sb.AppendLine(@"                $dismPath = $candidate");
             sb.AppendLine(@"                Write-Host ""Using newer DISM from ADK: $candidate ($adkDismVersion)"" -ForegroundColor Green");
