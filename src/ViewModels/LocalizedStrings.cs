@@ -52,6 +52,7 @@ namespace tiny11_ui.ViewModels
         public string SystemFeaturesToDisable => _localization.GetString("SystemOptimizations");
         public string SystemRequirementsBypass => _localization.GetString("SystemRequirements");
         public string InstallationProcessBypass => _localization.GetString("InstallationProcess");
+        public string DeepCleanup => _localization.GetString("DeepCleanup");
     }
 
     public class LocalizedPresets
@@ -130,6 +131,25 @@ namespace tiny11_ui.ViewModels
         public string MicrosoftAccountRequirement => _localization.GetString("MicrosoftAccountRequirement");
         public string NetworkConnectionCheck => _localization.GetString("InternetConnectionCheck");
         public string PrivacySettings => _localization.GetString("PrivacySettingsSetup");
+    }
+
+    public class LocalizedDeepCleanup
+    {
+        private readonly LocalizationService _localization;
+
+        public LocalizedDeepCleanup(LocalizationService localization)
+        {
+            _localization = localization;
+        }
+
+        public string ComponentStoreCleanup => _localization.GetString("ComponentStoreCleanup");
+        public string CompressImage => _localization.GetString("CompressImage");
+        public string HyperV => _localization.GetString("HyperV");
+        public string WindowsRecall => _localization.GetString("WindowsRecall");
+        public string Widgets => _localization.GetString("Widgets");
+        public string Copilot => _localization.GetString("Copilot");
+        public string SpeechOcrHandwriting => _localization.GetString("SpeechOcrHandwriting");
+        public string DriverCleanup => _localization.GetString("DriverCleanup");
     }
 
     public class LocalizedTooltips

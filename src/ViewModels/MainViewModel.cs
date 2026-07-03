@@ -166,6 +166,31 @@ namespace tiny11_ui.ViewModels
         private bool _skipPrivacyQuestions = true;
         public bool SkipPrivacyQuestions { get => _skipPrivacyQuestions; set { _skipPrivacyQuestions = value; OnPropertyChanged(); } }
 
+        // Deep Cleanup / Size Reduction
+        private bool _cleanupComponentStore = true;
+        public bool CleanupComponentStore { get => _cleanupComponentStore; set { _cleanupComponentStore = value; OnPropertyChanged(); } }
+
+        private bool _compressFinalImage = true;
+        public bool CompressFinalImage { get => _compressFinalImage; set { _compressFinalImage = value; OnPropertyChanged(); } }
+
+        private bool _removeHyperV = false;
+        public bool RemoveHyperV { get => _removeHyperV; set { _removeHyperV = value; OnPropertyChanged(); } }
+
+        private bool _removeRecall = true;
+        public bool RemoveRecall { get => _removeRecall; set { _removeRecall = value; OnPropertyChanged(); } }
+
+        private bool _removeWidgets = true;
+        public bool RemoveWidgets { get => _removeWidgets; set { _removeWidgets = value; OnPropertyChanged(); } }
+
+        private bool _removeCopilot = true;
+        public bool RemoveCopilot { get => _removeCopilot; set { _removeCopilot = value; OnPropertyChanged(); } }
+
+        private bool _removeInputComponents = false;
+        public bool RemoveInputComponents { get => _removeInputComponents; set { _removeInputComponents = value; OnPropertyChanged(); } }
+
+        private bool _cleanupDriverStore = false;
+        public bool CleanupDriverStore { get => _cleanupDriverStore; set { _cleanupDriverStore = value; OnPropertyChanged(); } }
+
         #endregion
 
         private ObservableCollection<string> _windowsEditions = new ObservableCollection<string>();
@@ -265,6 +290,18 @@ namespace tiny11_ui.ViewModels
         /// Uygulama kapatılabilir mi?
         /// </summary>
         public bool CanClose => !IsBuildRunning;
+
+        /// <summary>
+        /// Uygulama sürümü (assembly'den okunur)
+        /// </summary>
+        public string AppVersion
+        {
+            get
+            {
+                var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                return version == null ? "v?" : $"v{version.Major}.{version.Minor}.{version.Build}";
+            }
+        }
 
         /// <summary>
         /// Yeni build başlatılabilir mi?
@@ -489,7 +526,17 @@ namespace tiny11_ui.ViewModels
                     // OOBE ayarları
                     BypassMSAccount = BypassMSAccount,
                     SkipNetworkConnection = SkipNetworkConnection,
-                    SkipPrivacyQuestions = SkipPrivacyQuestions
+                    SkipPrivacyQuestions = SkipPrivacyQuestions,
+
+                    // Derin temizlik / boyut küçültme
+                    CleanupComponentStore = CleanupComponentStore,
+                    CompressFinalImage = CompressFinalImage,
+                    RemoveHyperV = RemoveHyperV,
+                    RemoveRecall = RemoveRecall,
+                    RemoveWidgets = RemoveWidgets,
+                    RemoveCopilot = RemoveCopilot,
+                    RemoveInputComponents = RemoveInputComponents,
+                    CleanupDriverStore = CleanupDriverStore
                 };
 
                 LogOutput += GetLocalizedString("LogBuildStarted") + "\n";
@@ -769,6 +816,15 @@ namespace tiny11_ui.ViewModels
             SkipNetworkConnection = true;
             SkipPrivacyQuestions = true;
 
+            CleanupComponentStore = true;
+            CompressFinalImage = true;
+            RemoveHyperV = true;
+            RemoveRecall = true;
+            RemoveWidgets = true;
+            RemoveCopilot = true;
+            RemoveInputComponents = true;
+            CleanupDriverStore = true;
+
             LogOutput += "🎯 Minimal preset uygulandı - Maksimum optimizasyon\n";
         }
 
@@ -797,6 +853,15 @@ namespace tiny11_ui.ViewModels
             BypassMSAccount = true;
             SkipNetworkConnection = true;
             SkipPrivacyQuestions = true;
+
+            CleanupComponentStore = true;
+            CompressFinalImage = true;
+            RemoveHyperV = false;
+            RemoveRecall = true;
+            RemoveWidgets = true;
+            RemoveCopilot = true;
+            RemoveInputComponents = false;
+            CleanupDriverStore = false;
 
             LogOutput += "⚖️ Balanced preset uygulandı - Dengeli optimizasyon\n";
         }
@@ -827,6 +892,15 @@ namespace tiny11_ui.ViewModels
             SkipNetworkConnection = false;
             SkipPrivacyQuestions = true;
 
+            CleanupComponentStore = true;
+            CompressFinalImage = true;
+            RemoveHyperV = false;
+            RemoveRecall = true;
+            RemoveWidgets = true;
+            RemoveCopilot = true;
+            RemoveInputComponents = false;
+            CleanupDriverStore = false;
+
             LogOutput += "🎮 Gaming preset uygulandı - Performans optimizasyonu\n";
         }
 
@@ -855,6 +929,15 @@ namespace tiny11_ui.ViewModels
             BypassMSAccount = true;
             SkipNetworkConnection = false;
             SkipPrivacyQuestions = false; // Enterprise uyumluluk
+
+            CleanupComponentStore = true;
+            CompressFinalImage = false; // Servis edilebilirlik için standart WIM korunur
+            RemoveHyperV = false; // Sanallaştırma ihtiyacı olabilir
+            RemoveRecall = true; // Gizlilik/uyumluluk
+            RemoveWidgets = true;
+            RemoveCopilot = true; // Kurumsal uyumluluk
+            RemoveInputComponents = false; // Erişilebilirlik ihtiyaçları
+            CleanupDriverStore = false; // Farklı donanımlar için geniş sürücü desteği
 
             LogOutput += "🏢 Enterprise preset uygulandı - İş ortamı optimizasyonu\n";
         }
@@ -895,6 +978,7 @@ namespace tiny11_ui.ViewModels
             OnPropertyChanged(nameof(LocalizedSystemFeatures));
             OnPropertyChanged(nameof(LocalizedSystemRequirements));
             OnPropertyChanged(nameof(LocalizedInstallationProcess));
+            OnPropertyChanged(nameof(LocalizedDeepCleanup));
             OnPropertyChanged(nameof(LocalizedTooltips));
             
             // StatusText'i güncelle
@@ -948,6 +1032,7 @@ namespace tiny11_ui.ViewModels
         public LocalizedSystemFeatures LocalizedSystemFeatures => new LocalizedSystemFeatures(_localizationService);
         public LocalizedSystemRequirements LocalizedSystemRequirements => new LocalizedSystemRequirements(_localizationService);
         public LocalizedInstallationProcess LocalizedInstallationProcess => new LocalizedInstallationProcess(_localizationService);
+        public LocalizedDeepCleanup LocalizedDeepCleanup => new LocalizedDeepCleanup(_localizationService);
         public LocalizedTooltips LocalizedTooltips => new LocalizedTooltips(_localizationService);
 
         #endregion

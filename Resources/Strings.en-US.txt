@@ -23,6 +23,7 @@ AppsToRemove=Applications to Remove
 SystemOptimizations=Features to Disable
 SystemRequirements=System Requirements to Bypass
 InstallationProcess=Installation Steps to Skip
+DeepCleanup=Size Reduction (Deep Cleanup)
 
 # Presets
 PresetMinimal=Minimal
@@ -62,6 +63,16 @@ SecureBootRequirement=Secure Boot Requirement
 MicrosoftAccountRequirement=Microsoft Account Requirement
 InternetConnectionCheck=Internet Connection Check
 PrivacySettingsSetup=Privacy Settings Setup
+
+# Deep Cleanup / Size Reduction
+ComponentStoreCleanup=Component Store Cleanup (WinSxS)
+CompressImage=Compress Image (Recovery Compression)
+HyperV=Hyper-V
+WindowsRecall=Windows Recall
+Widgets=Widgets
+Copilot=Copilot
+SpeechOcrHandwriting=Speech / OCR / Handwriting
+DriverCleanup=Unused Drivers (Printer/Scanner/Modem/Xbox)
 
 # Status Messages
 Ready=Ready
