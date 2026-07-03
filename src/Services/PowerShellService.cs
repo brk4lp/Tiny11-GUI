@@ -268,6 +268,31 @@ namespace tiny11_ui.Services
             sb.AppendLine($@"$editionIndex = {editionIndex}");
             sb.AppendLine();
 
+            // En güncel DISM'i bul - ADK'daki DISM, host işletim sisteminden daha yeni olabilir.
+            // Eski bir DISM ile yeni bir Windows imajını servislemeye çalışmak (StartComponentCleanup,
+            // Export-Image /Compress:recovery gibi işlemlerde) sessizce/anlamsız hatalarla başarısız olur.
+            sb.AppendLine(@"# En güncel DISM'i bul (ADK varsa host'takinden daha yeni olabilir)");
+            sb.AppendLine(@"$dismPath = 'dism'");
+            sb.AppendLine(@"try {");
+            sb.AppendLine(@"    $systemDismPath = Join-Path $env:SystemRoot 'System32\dism.exe'");
+            sb.AppendLine(@"    $systemDismVersion = [System.Version](Get-Item $systemDismPath).VersionInfo.FileVersion");
+            sb.AppendLine(@"    $adkDismCandidates = @(");
+            sb.AppendLine(@"        'C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\DISM\dism.exe'");
+            sb.AppendLine(@"        'C:\Program Files\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\DISM\dism.exe'");
+            sb.AppendLine(@"    )");
+            sb.AppendLine(@"    foreach ($candidate in $adkDismCandidates) {");
+            sb.AppendLine(@"        if (Test-Path $candidate) {");
+            sb.AppendLine(@"            $adkDismVersion = [System.Version](Get-Item $candidate).VersionInfo.FileVersion");
+            sb.AppendLine(@"            if ($adkDismVersion -gt $systemDismVersion) {");
+            sb.AppendLine(@"                $dismPath = $candidate");
+            sb.AppendLine(@"                Write-Host ""Using newer DISM from ADK: $candidate ($adkDismVersion)"" -ForegroundColor Green");
+            sb.AppendLine(@"            }");
+            sb.AppendLine(@"            break");
+            sb.AppendLine(@"        }");
+            sb.AppendLine(@"    }");
+            sb.AppendLine(@"} catch { }");
+            sb.AppendLine();
+
             // Dizin hazırlama - Her zaman benzersiz dizin kullan
             sb.AppendLine(@"# Benzersiz çalışma dizinleri oluştur (önceki mount sorunlarını önlemek için)");
             sb.AppendLine(@"$timestamp = Get-Date -Format 'yyyyMMddHHmmss'");
@@ -311,8 +336,15 @@ namespace tiny11_ui.Services
             // ISO mount
             sb.AppendLine(@"# ISO'yu mount et");
             sb.AppendLine(@"Write-Host 'Mounting ISO...' -ForegroundColor Cyan");
+            sb.AppendLine(@"$driveBefore = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'CDRom' } | ForEach-Object { $_.Name }");
             sb.AppendLine(@"$mountResult = Mount-DiskImage -ImagePath $isoPath -PassThru");
-            sb.AppendLine(@"$driveLetter = ($mountResult | Get-Volume).DriveLetter + ':'");
+            sb.AppendLine(@"$driveLetter = $null");
+            sb.AppendLine(@"for ($i = 0; $i -lt 20; $i++) {");
+            sb.AppendLine(@"    $candidate = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'CDRom' -and $_.IsReady -and $driveBefore -notcontains $_.Name } | Select-Object -First 1");
+            sb.AppendLine(@"    if ($candidate) { $driveLetter = $candidate.Name.TrimEnd('\'); break }");
+            sb.AppendLine(@"    Start-Sleep -Milliseconds 500");
+            sb.AppendLine(@"}");
+            sb.AppendLine(@"if (-not $driveLetter) { throw 'Could not determine the drive letter of the mounted ISO' }");
             sb.AppendLine(@"Write-Host ""Mounted drive: $driveLetter"" -ForegroundColor Green");
             sb.AppendLine();
 
@@ -328,7 +360,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"$esdPath = Join-Path $isoDir 'sources\install.esd'");
             sb.AppendLine(@"if (Test-Path $esdPath) {");
             sb.AppendLine(@"    Write-Host 'Converting ESD -> WIM...' -ForegroundColor Cyan");
-            sb.AppendLine(@"    dism /export-image /sourceimagefile:$esdPath /sourceindex:$editionIndex /destinationimagefile:$wimPath /compress:max");
+            sb.AppendLine(@"    & $dismPath /export-image /sourceimagefile:$esdPath /sourceindex:$editionIndex /destinationimagefile:$wimPath /compress:max");
             sb.AppendLine(@"    Remove-Item $esdPath -Force");
             sb.AppendLine(@"} elseif (!(Test-Path $wimPath)) {");
             sb.AppendLine(@"    throw 'install.wim or install.esd not found!'");
@@ -344,7 +376,7 @@ namespace tiny11_ui.Services
             // Mount işlemi - basit ve direkt
             sb.AppendLine(@"# Mount işlemi");
             sb.AppendLine(@"Write-Host ""   Mounting to: $mountDir"" -ForegroundColor Gray");
-            sb.AppendLine(@"$mountResult = dism /mount-wim /wimfile:$wimPath /index:$editionIndex /mountdir:$mountDir 2>&1");
+            sb.AppendLine(@"$mountResult = & $dismPath /mount-wim /wimfile:$wimPath /index:$editionIndex /mountdir:$mountDir 2>&1");
             sb.AppendLine();
             sb.AppendLine(@"if ($LASTEXITCODE -ne 0) {");
             sb.AppendLine(@"    Write-Host 'Mount failed, error details:' -ForegroundColor Red");
@@ -353,7 +385,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"    Write-Host 'Attempting recovery...' -ForegroundColor Yellow");
             sb.AppendLine(@"    ");
             sb.AppendLine(@"    # Cleanup-wim dene");
-            sb.AppendLine(@"    dism /cleanup-wim 2>$null");
+            sb.AppendLine(@"    & $dismPath /cleanup-wim 2>$null");
             sb.AppendLine(@"    Start-Sleep -Seconds 3");
             sb.AppendLine(@"    ");
             sb.AppendLine(@"    # Yeni dizin ile tekrar dene");
@@ -362,7 +394,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"    New-Item -ItemType Directory -Force -Path $mountDir | Out-Null");
             sb.AppendLine(@"    Write-Host ""   Retrying with: $mountDir"" -ForegroundColor Gray");
             sb.AppendLine(@"    ");
-            sb.AppendLine(@"    $mountResult = dism /mount-wim /wimfile:$wimPath /index:$editionIndex /mountdir:$mountDir 2>&1");
+            sb.AppendLine(@"    $mountResult = & $dismPath /mount-wim /wimfile:$wimPath /index:$editionIndex /mountdir:$mountDir 2>&1");
             sb.AppendLine(@"    ");
             sb.AppendLine(@"    if ($LASTEXITCODE -ne 0) {");
             sb.AppendLine(@"        Write-Host 'ERROR: Failed to mount WIM image!' -ForegroundColor Red");
@@ -561,47 +593,68 @@ namespace tiny11_ui.Services
             if (options.RemoveHyperV)
             {
                 sb.AppendLine(@"Write-Host '   Removing Hyper-V...' -ForegroundColor Yellow");
-                sb.AppendLine(@"dism /image:$mountDir /Disable-Feature /FeatureName:Microsoft-Hyper-V-All /Remove /NoRestart 2>$null | Out-Null");
+                sb.AppendLine(@"& $dismPath /image:$mountDir /Disable-Feature /FeatureName:Microsoft-Hyper-V-All /Remove /NoRestart 2>$null | Out-Null");
+                sb.AppendLine();
+            }
+
+            if (options.RemoveRecall || options.RemoveInputComponents || options.CleanupDriverStore)
+            {
+                // Get-WindowsCapability/Get-WindowsDriver PowerShell cmdlet'leri host işletim sisteminin
+                // eski Dism modülüne bağımlı ve yeni Windows imajlarıyla sessizce başarısız olabiliyor.
+                // Bunun yerine dism.exe konsol çıktısını parse eden fonksiyonlar kullanılır.
+                sb.AppendLine(@"function Remove-MatchingCapabilities($Patterns) {");
+                sb.AppendLine(@"    $capOutput = & $dismPath /Image:$mountDir /Get-Capabilities");
+                sb.AppendLine(@"    $names = $capOutput | Select-String 'Capability Identity\s*:\s*(.+)' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }");
+                sb.AppendLine(@"    foreach ($name in $names) {");
+                sb.AppendLine(@"        foreach ($pattern in $Patterns) {");
+                sb.AppendLine(@"            if ($name -like $pattern) {");
+                sb.AppendLine(@"                & $dismPath /Image:$mountDir /Remove-Capability /CapabilityName:$name 2>$null | Out-Null");
+                sb.AppendLine(@"                break");
+                sb.AppendLine(@"            }");
+                sb.AppendLine(@"        }");
+                sb.AppendLine(@"    }");
+                sb.AppendLine(@"}");
+                sb.AppendLine(@"function Remove-MatchingDrivers($ClassNames) {");
+                sb.AppendLine(@"    $driverOutput = & $dismPath /Image:$mountDir /Get-Drivers");
+                sb.AppendLine(@"    $driverText = $driverOutput -join ""`n""");
+                sb.AppendLine(@"    $blocks = $driverText -split '(?=Published Name)'");
+                sb.AppendLine(@"    foreach ($block in $blocks) {");
+                sb.AppendLine(@"        if ($block -match 'Published Name\s*:\s*(\S+)') {");
+                sb.AppendLine(@"            $pubName = $Matches[1]");
+                sb.AppendLine(@"            if ($block -match 'Class Name\s*:\s*(\S+)' -and $ClassNames -contains $Matches[1]) {");
+                sb.AppendLine(@"                & $dismPath /Image:$mountDir /Remove-Driver /Driver:$pubName 2>$null | Out-Null");
+                sb.AppendLine(@"            }");
+                sb.AppendLine(@"        }");
+                sb.AppendLine(@"    }");
+                sb.AppendLine(@"}");
                 sb.AppendLine();
             }
 
             if (options.RemoveRecall)
             {
                 sb.AppendLine(@"Write-Host '   Removing Windows Recall...' -ForegroundColor Yellow");
-                sb.AppendLine(@"try {");
-                sb.AppendLine(@"    Get-WindowsCapability -Path $mountDir | Where-Object { $_.Name -like 'Recall*' } | ForEach-Object {");
-                sb.AppendLine(@"        Remove-WindowsCapability -Path $mountDir -Name $_.Name -ErrorAction SilentlyContinue | Out-Null");
-                sb.AppendLine(@"    }");
-                sb.AppendLine(@"} catch { }");
+                sb.AppendLine(@"try { Remove-MatchingCapabilities -Patterns @('Recall*') } catch { }");
                 sb.AppendLine();
             }
 
             if (options.RemoveInputComponents)
             {
                 sb.AppendLine(@"Write-Host '   Removing Speech/OCR/Handwriting components...' -ForegroundColor Yellow");
-                sb.AppendLine(@"try {");
-                sb.AppendLine(@"    Get-WindowsCapability -Path $mountDir | Where-Object { $_.Name -like 'Language.Speech*' -or $_.Name -like 'Language.OCR*' -or $_.Name -like 'Language.Handwriting*' -or $_.Name -like 'Language.TextToSpeech*' } | ForEach-Object {");
-                sb.AppendLine(@"        Remove-WindowsCapability -Path $mountDir -Name $_.Name -ErrorAction SilentlyContinue | Out-Null");
-                sb.AppendLine(@"    }");
-                sb.AppendLine(@"} catch { }");
+                sb.AppendLine(@"try { Remove-MatchingCapabilities -Patterns @('Language.Speech*', 'Language.OCR*', 'Language.Handwriting*', 'Language.TextToSpeech*') } catch { }");
                 sb.AppendLine();
             }
 
             if (options.CleanupDriverStore)
             {
                 sb.AppendLine(@"Write-Host '   Removing unused driver packages (printer/scanner/modem/Xbox)...' -ForegroundColor Yellow");
-                sb.AppendLine(@"try {");
-                sb.AppendLine(@"    Get-WindowsDriver -Path $mountDir | Where-Object { $_.ClassName -in @('Printer','PrinterQueue','Image','Modem','XboxComposite') } | ForEach-Object {");
-                sb.AppendLine(@"        Remove-WindowsDriver -Path $mountDir -Driver $_.Driver -ErrorAction SilentlyContinue | Out-Null");
-                sb.AppendLine(@"    }");
-                sb.AppendLine(@"} catch { }");
+                sb.AppendLine(@"try { Remove-MatchingDrivers -ClassNames @('Printer', 'PrinterQueue', 'Image', 'Modem', 'XboxComposite') } catch { }");
                 sb.AppendLine();
             }
 
             if (options.CleanupComponentStore)
             {
                 sb.AppendLine(@"Write-Host '   Cleaning up component store (WinSxS, this can take several minutes)...' -ForegroundColor Yellow");
-                sb.AppendLine(@"dism /image:$mountDir /Cleanup-Image /StartComponentCleanup /ResetBase");
+                sb.AppendLine(@"& $dismPath /image:$mountDir /Cleanup-Image /StartComponentCleanup /ResetBase");
                 sb.AppendLine();
             }
 
@@ -633,7 +686,7 @@ namespace tiny11_ui.Services
             // WIM unmount
             sb.AppendLine(@"# Image'ı kaydet ve unmount et");
             sb.AppendLine(@"Write-Host 'Saving changes...' -ForegroundColor Cyan");
-            sb.AppendLine(@"dism /unmount-wim /mountdir:$mountDir /commit");
+            sb.AppendLine(@"& $dismPath /unmount-wim /mountdir:$mountDir /commit");
             sb.AppendLine();
 
             // ISO unmount
@@ -645,16 +698,18 @@ namespace tiny11_ui.Services
             // Görüntüyü sıkıştır (Recovery compression) - boyutu belirgin şekilde azaltır
             if (options.CompressFinalImage)
             {
-                sb.AppendLine(@"# Görüntüyü sıkıştır (Recovery compression)");
+                sb.AppendLine(@"# Görüntüyü sıkıştır (Recovery compression) - dism.exe /Export-Image kullanılır, PowerShell'in");
+                sb.AppendLine(@"# Export-WindowsImage cmdlet'i host işletim sisteminin eski Dism modülüne bağımlı olduğu için atlanır.");
                 sb.AppendLine(@"Write-Host 'Compressing final image (recovery compression)...' -ForegroundColor Cyan");
-                sb.AppendLine(@"try {");
-                sb.AppendLine(@"    $compressedWimPath = Join-Path $isoDir 'sources\install_compressed.wim'");
-                sb.AppendLine(@"    Export-WindowsImage -SourceImagePath $wimPath -SourceIndex $editionIndex -DestinationImagePath $compressedWimPath -CompressionType Recovery -ErrorAction Stop");
+                sb.AppendLine(@"$compressedWimPath = Join-Path $isoDir 'sources\install_compressed.wim'");
+                sb.AppendLine(@"& $dismPath /Export-Image /SourceImageFile:$wimPath /SourceIndex:$editionIndex /DestinationImageFile:$compressedWimPath /Compress:recovery");
+                sb.AppendLine(@"if ($LASTEXITCODE -eq 0 -and (Test-Path $compressedWimPath)) {");
                 sb.AppendLine(@"    Remove-Item $wimPath -Force");
                 sb.AppendLine(@"    Rename-Item $compressedWimPath 'install.wim'");
                 sb.AppendLine(@"    Write-Host '   Image compressed successfully' -ForegroundColor Green");
-                sb.AppendLine(@"} catch {");
-                sb.AppendLine(@"    Write-Host ""   Compression failed, keeping uncompressed image: $($_.Exception.Message)"" -ForegroundColor Yellow");
+                sb.AppendLine(@"} else {");
+                sb.AppendLine(@"    Write-Host '   Compression failed, keeping uncompressed image' -ForegroundColor Yellow");
+                sb.AppendLine(@"    Remove-Item $compressedWimPath -Force -ErrorAction SilentlyContinue");
                 sb.AppendLine(@"}");
                 sb.AppendLine();
             }
@@ -1027,8 +1082,15 @@ namespace tiny11_ui.Services
                         $isoPath = [System.Text.Encoding]::UTF8.GetString($isoPathBytes)
                         
                         Write-Host ""ISO mount ediliyor: $isoPath""
+                        $driveBefore = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'CDRom' } | ForEach-Object { $_.Name }
                         $mountResult = Mount-DiskImage -ImagePath $isoPath -PassThru
-                        $driveLetter = ($mountResult | Get-Volume).DriveLetter + ':'
+                        $driveLetter = $null
+                        for ($i = 0; $i -lt 20; $i++) {
+                            $candidate = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'CDRom' -and $_.IsReady -and $driveBefore -notcontains $_.Name } | Select-Object -First 1
+                            if ($candidate) { $driveLetter = $candidate.Name.TrimEnd('\'); break }
+                            Start-Sleep -Milliseconds 500
+                        }
+                        if (-not $driveLetter) { throw 'Could not determine the drive letter of the mounted ISO' }
                         Write-Host ""Mount edilen surucu: $driveLetter""
                         
                         $wimPath = $null
@@ -1146,8 +1208,15 @@ namespace tiny11_ui.Services
             {
                 var escapedIsoPath = isoPath.Replace("'", "''");
                 var script = $@"
-                    $mountResult = Mount-DiskImage -ImagePath '{escapedIsoPath}' -PassThru
-                    $driveLetter = ($mountResult | Get-Volume).DriveLetter
+                    $isoPath = '{escapedIsoPath}'
+                    $driveBefore = [System.IO.DriveInfo]::GetDrives() | Where-Object {{ $_.DriveType -eq 'CDRom' }} | ForEach-Object {{ $_.Name }}
+                    $mountResult = Mount-DiskImage -ImagePath $isoPath -PassThru
+                    $driveLetter = $null
+                    for ($i = 0; $i -lt 20; $i++) {{
+                        $candidate = [System.IO.DriveInfo]::GetDrives() | Where-Object {{ $_.DriveType -eq 'CDRom' -and $_.IsReady -and $driveBefore -notcontains $_.Name }} | Select-Object -First 1
+                        if ($candidate) {{ $driveLetter = $candidate.Name.TrimEnd('\'); break }}
+                        Start-Sleep -Milliseconds 500
+                    }}
                     Write-Output $driveLetter
                 ";
 
@@ -1178,29 +1247,42 @@ namespace tiny11_ui.Services
 
         private async Task<string> RunPowerShellCommandAsync(string command)
         {
-            var processInfo = new ProcessStartInfo
+            // Script -Command üzerinden komut satırına gömülürse iç içe tırnaklar/alt ifadeler
+            // ($(...), "...") komut satırı ayrıştırmasında bozulabiliyor. Geçici .ps1 dosyasına
+            // yazıp -File ile çalıştırmak bu sorunu tamamen ortadan kaldırır.
+            var tempScriptPath = Path.Combine(Path.GetTempPath(), $"tiny11_cmd_{Guid.NewGuid():N}.ps1");
+            await File.WriteAllTextAsync(tempScriptPath, command, Encoding.UTF8);
+
+            try
             {
-                FileName = "powershell.exe",
-                Arguments = $"-Command \"{command}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-ExecutionPolicy Bypass -NoProfile -File \"{tempScriptPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
 
-            using var process = Process.Start(processInfo);
-            if (process == null)
-                return string.Empty;
+                using var process = Process.Start(processInfo);
+                if (process == null)
+                    return string.Empty;
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
-            
-            await Task.Run(() => process.WaitForExit());
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
 
-            if (!string.IsNullOrEmpty(error))
-                throw new Exception(error);
+                await Task.Run(() => process.WaitForExit());
 
-            return output;
+                if (!string.IsNullOrEmpty(error))
+                    throw new Exception(error);
+
+                return output;
+            }
+            finally
+            {
+                try { if (File.Exists(tempScriptPath)) File.Delete(tempScriptPath); } catch { /* Ignore cleanup errors */ }
+            }
         }
 
         private async Task CleanupEnvironmentAsync()
