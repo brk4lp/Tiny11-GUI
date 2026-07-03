@@ -43,7 +43,7 @@ Based on your selections, the app generates and runs a PowerShell script. ISO/WI
 
 ## License
 
-MIT License — see the LICENSE file for details.
+No license is specified. All rights reserved by default — this matches the upstream [tiny11builder](https://github.com/ntdevlabs/tiny11builder) project, which also has no license.
 
 ## Credits
 
