@@ -292,6 +292,18 @@ namespace tiny11_ui.ViewModels
         public bool CanClose => !IsBuildRunning;
 
         /// <summary>
+        /// Uygulama sürümü (assembly'den okunur)
+        /// </summary>
+        public string AppVersion
+        {
+            get
+            {
+                var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                return version == null ? "v?" : $"v{version.Major}.{version.Minor}.{version.Build}";
+            }
+        }
+
+        /// <summary>
         /// Yeni build başlatılabilir mi?
         /// </summary>
         public bool CanStartNewBuild => !IsBuildRunning;
