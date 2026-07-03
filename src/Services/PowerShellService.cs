@@ -550,6 +550,61 @@ namespace tiny11_ui.Services
                 sb.AppendLine();
             }
 
+            // Derin temizlik / boyut küçültme (WIM hâlâ mount'lu iken yapılmalı)
+            if (options.RemoveHyperV || options.RemoveRecall || options.RemoveInputComponents || options.CleanupDriverStore || options.CleanupComponentStore)
+            {
+                sb.AppendLine(@"# Derin temizlik (boyut küçültme)");
+                sb.AppendLine(@"Write-Host 'Running deep cleanup...' -ForegroundColor Cyan");
+                sb.AppendLine();
+            }
+
+            if (options.RemoveHyperV)
+            {
+                sb.AppendLine(@"Write-Host '   Removing Hyper-V...' -ForegroundColor Yellow");
+                sb.AppendLine(@"dism /image:$mountDir /Disable-Feature /FeatureName:Microsoft-Hyper-V-All /Remove /NoRestart 2>$null | Out-Null");
+                sb.AppendLine();
+            }
+
+            if (options.RemoveRecall)
+            {
+                sb.AppendLine(@"Write-Host '   Removing Windows Recall...' -ForegroundColor Yellow");
+                sb.AppendLine(@"try {");
+                sb.AppendLine(@"    Get-WindowsCapability -Path $mountDir | Where-Object { $_.Name -like 'Recall*' } | ForEach-Object {");
+                sb.AppendLine(@"        Remove-WindowsCapability -Path $mountDir -Name $_.Name -ErrorAction SilentlyContinue | Out-Null");
+                sb.AppendLine(@"    }");
+                sb.AppendLine(@"} catch { }");
+                sb.AppendLine();
+            }
+
+            if (options.RemoveInputComponents)
+            {
+                sb.AppendLine(@"Write-Host '   Removing Speech/OCR/Handwriting components...' -ForegroundColor Yellow");
+                sb.AppendLine(@"try {");
+                sb.AppendLine(@"    Get-WindowsCapability -Path $mountDir | Where-Object { $_.Name -like 'Language.Speech*' -or $_.Name -like 'Language.OCR*' -or $_.Name -like 'Language.Handwriting*' -or $_.Name -like 'Language.TextToSpeech*' } | ForEach-Object {");
+                sb.AppendLine(@"        Remove-WindowsCapability -Path $mountDir -Name $_.Name -ErrorAction SilentlyContinue | Out-Null");
+                sb.AppendLine(@"    }");
+                sb.AppendLine(@"} catch { }");
+                sb.AppendLine();
+            }
+
+            if (options.CleanupDriverStore)
+            {
+                sb.AppendLine(@"Write-Host '   Removing unused driver packages (printer/scanner/modem/Xbox)...' -ForegroundColor Yellow");
+                sb.AppendLine(@"try {");
+                sb.AppendLine(@"    Get-WindowsDriver -Path $mountDir | Where-Object { $_.ClassName -in @('Printer','PrinterQueue','Image','Modem','XboxComposite') } | ForEach-Object {");
+                sb.AppendLine(@"        Remove-WindowsDriver -Path $mountDir -Driver $_.Driver -ErrorAction SilentlyContinue | Out-Null");
+                sb.AppendLine(@"    }");
+                sb.AppendLine(@"} catch { }");
+                sb.AppendLine();
+            }
+
+            if (options.CleanupComponentStore)
+            {
+                sb.AppendLine(@"Write-Host '   Cleaning up component store (WinSxS, this can take several minutes)...' -ForegroundColor Yellow");
+                sb.AppendLine(@"dism /image:$mountDir /Cleanup-Image /StartComponentCleanup /ResetBase");
+                sb.AppendLine();
+            }
+
             // Unload registry hives
             sb.AppendLine(@"# Registry hive'larını kaldır");
             sb.AppendLine(@"Write-Host '   Unloading registry hives...' -ForegroundColor Gray");
@@ -586,6 +641,23 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"Write-Host 'Unmounting source ISO...' -ForegroundColor Cyan");
             sb.AppendLine(@"Dismount-DiskImage -ImagePath $isoPath -ErrorAction SilentlyContinue");
             sb.AppendLine();
+
+            // Görüntüyü sıkıştır (Recovery compression) - boyutu belirgin şekilde azaltır
+            if (options.CompressFinalImage)
+            {
+                sb.AppendLine(@"# Görüntüyü sıkıştır (Recovery compression)");
+                sb.AppendLine(@"Write-Host 'Compressing final image (recovery compression)...' -ForegroundColor Cyan");
+                sb.AppendLine(@"try {");
+                sb.AppendLine(@"    $compressedWimPath = Join-Path $isoDir 'sources\install_compressed.wim'");
+                sb.AppendLine(@"    Export-WindowsImage -SourceImagePath $wimPath -SourceIndex $editionIndex -DestinationImagePath $compressedWimPath -CompressionType Recovery -ErrorAction Stop");
+                sb.AppendLine(@"    Remove-Item $wimPath -Force");
+                sb.AppendLine(@"    Rename-Item $compressedWimPath 'install.wim'");
+                sb.AppendLine(@"    Write-Host '   Image compressed successfully' -ForegroundColor Green");
+                sb.AppendLine(@"} catch {");
+                sb.AppendLine(@"    Write-Host ""   Compression failed, keeping uncompressed image: $($_.Exception.Message)"" -ForegroundColor Yellow");
+                sb.AppendLine(@"}");
+                sb.AppendLine();
+            }
 
             // Oscdimg ile ISO oluştur
             sb.AppendLine(@"# Yeni ISO oluştur");

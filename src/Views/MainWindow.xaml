@@ -177,6 +177,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
                         <!-- Presets -->
@@ -236,6 +237,20 @@
                                 <CheckBox IsChecked="{Binding BypassMSAccount}" Content="{Binding LocalizedInstallationProcess.MicrosoftAccountRequirement}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
                                 <CheckBox IsChecked="{Binding SkipNetworkConnection}" Content="{Binding LocalizedInstallationProcess.NetworkConnectionCheck}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
                                 <CheckBox IsChecked="{Binding SkipPrivacyQuestions}" Content="{Binding LocalizedInstallationProcess.PrivacySettings}" Style="{StaticResource CompactCheckBox}"/>
+                            </WrapPanel>
+                        </GroupBox>
+
+                        <!-- Deep Cleanup / Size Reduction -->
+                        <GroupBox Header="{Binding LocalizedHeaders.DeepCleanup}" Grid.Row="4" Style="{StaticResource CompactGroupBox}">
+                            <WrapPanel Margin="3">
+                                <CheckBox IsChecked="{Binding CleanupComponentStore}" Content="{Binding LocalizedDeepCleanup.ComponentStoreCleanup}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding CompressFinalImage}" Content="{Binding LocalizedDeepCleanup.CompressImage}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding RemoveHyperV}" Content="{Binding LocalizedDeepCleanup.HyperV}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding RemoveRecall}" Content="{Binding LocalizedDeepCleanup.WindowsRecall}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding RemoveWidgets}" Content="{Binding LocalizedDeepCleanup.Widgets}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding RemoveCopilot}" Content="{Binding LocalizedDeepCleanup.Copilot}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding RemoveInputComponents}" Content="{Binding LocalizedDeepCleanup.SpeechOcrHandwriting}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
+                                <CheckBox IsChecked="{Binding CleanupDriverStore}" Content="{Binding LocalizedDeepCleanup.DriverCleanup}" Style="{StaticResource CompactCheckBox}"/>
                             </WrapPanel>
                         </GroupBox>
                     </Grid>

@@ -32,6 +32,16 @@ namespace tiny11_ui.Models
         public bool SkipNetworkConnection { get; set; } = true;
         public bool SkipPrivacyQuestions { get; set; } = true;
 
+        // Derin Temizlik / Boyut Küçültme
+        public bool CleanupComponentStore { get; set; } = true;
+        public bool CompressFinalImage { get; set; } = true;
+        public bool RemoveHyperV { get; set; } = false;
+        public bool RemoveRecall { get; set; } = true;
+        public bool RemoveWidgets { get; set; } = true;
+        public bool RemoveCopilot { get; set; } = true;
+        public bool RemoveInputComponents { get; set; } = false;
+        public bool CleanupDriverStore { get; set; } = false;
+
         /// <summary>
         /// Kaldırılacak AppX paketlerinin listesini döndürür
         /// </summary>
@@ -102,6 +112,18 @@ namespace tiny11_ui.Models
                 packages.Add("Microsoft.XboxSpeechToTextOverlay");
                 packages.Add("Microsoft.XboxIdentityProvider");
                 packages.Add("Microsoft.XboxApp");
+            }
+
+            // Widgets (kısa substring - paket adı build'e göre değişebilir)
+            if (RemoveWidgets)
+            {
+                packages.Add("WebExperience");
+            }
+
+            // Copilot (kısa substring - paket adı build'e göre değişebilir)
+            if (RemoveCopilot)
+            {
+                packages.Add("Copilot");
             }
 
             return packages.ToArray();

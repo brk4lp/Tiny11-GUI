@@ -23,6 +23,7 @@ AppsToRemove=Kaldırılacak Uygulamalar
 SystemOptimizations=Devre Dışı Bırakılacaklar
 SystemRequirements=Atlanacak Sistem Gereksinimleri
 InstallationProcess=Atlanacak Kurulum Süreçleri
+DeepCleanup=Boyut Küçültme (Derin Temizlik)
 
 # Presets
 PresetMinimal=Minimal
@@ -62,6 +63,16 @@ SecureBootRequirement=Secure Boot Gereksinimi
 MicrosoftAccountRequirement=Microsoft Hesabı Zorunluluğu
 InternetConnectionCheck=İnternet Bağlantısı Kontrolü
 PrivacySettingsSetup=Gizlilik Ayarları Kurulumu
+
+# Deep Cleanup / Size Reduction
+ComponentStoreCleanup=Component Store Temizliği (WinSxS)
+CompressImage=Görüntüyü Sıkıştır (Recovery Compression)
+HyperV=Hyper-V
+WindowsRecall=Windows Recall
+Widgets=Widgets
+Copilot=Copilot
+SpeechOcrHandwriting=Konuşma / OCR / El Yazısı
+DriverCleanup=Kullanılmayan Sürücüler (Yazıcı/Tarayıcı/Modem/Xbox)
 
 # Status Messages
 Ready=Hazır
