@@ -27,7 +27,7 @@ A WPF front-end for [tiny11builder](https://github.com/ntdevlabs/tiny11builder),
 git clone https://github.com/brk4lp/Tiny11-GUI.git
 ```
 
-Open `tiny11-ui.sln` in Visual Studio 2022+ and build (`Ctrl+Shift+B`).
+Open `tiny11-ui.sln` in Visual Studio and build (`Ctrl+Shift+B`).
 
 ## Usage
 
