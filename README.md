@@ -9,10 +9,15 @@ A WPF front-end for [tiny11builder](https://github.com/ntdevlabs/tiny11builder),
 - Build from a Windows 11 ISO with edition selection
 - Removable apps: Edge, OneDrive, Cortana, Chat, Teams, Xbox
 - Disable telemetry, Windows Update, Defender, sponsored apps, reserved storage, BitLocker
+- Size reduction: DISM component store cleanup, recovery compression of `install.wim`, Hyper-V/Recall/Speech/OCR/Handwriting stripping, driver store cleanup
 - Bypass TPM/CPU/RAM/Secure Boot checks and MS account/network/privacy setup steps
 - Built-in presets: Minimal, Balanced, Gaming, Enterprise
 - Live log output during the build
 - English and Turkish UI
+
+## Works on debloated Windows too
+
+The app doesn't depend on the Storage Management WMI provider (`Get-Volume`/`Get-Disk`/`Get-Partition`), which is commonly missing or broken on trimmed-down Windows installs (Tiny10/Tiny11-style builds). ISO mounting is detected with a plain drive-letter diff instead, and DISM operations use the newest `dism.exe` available on the machine (preferring Windows ADK's if it's newer than the one bundled with the OS) rather than assuming the host's DISM can service whatever image you're building. So building — or testing — this tool from an already-debloated system should work fine.
 
 ## Requirements
 
@@ -40,6 +45,10 @@ Open `tiny11-ui.sln` in Visual Studio and build (`Ctrl+Shift+B`).
 ## How It Works
 
 Based on your selections, the app generates and runs a PowerShell script. ISO/WIM mounting is handled via DISM, and the final ISO is built with `oscdimg.exe` from the Windows ADK.
+
+## Testing & Feedback
+
+This is early — the size-reduction path in particular has only really been exercised on a couple of setups so far. If you try it, an issue with your before/after ISO size, Windows build, and whether you're running it from a stock or already-trimmed-down Windows install is genuinely useful. That's exactly the kind of report that found and fixed the WMI/DISM issues above.
 
 ## License
 
