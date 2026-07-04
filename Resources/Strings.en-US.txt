@@ -12,6 +12,7 @@ SelectButton=Select...
 SaveButton=Save...
 StartBuildButton=Start Building Tiny11
 CancelButton=Cancel
+ClearButton=Clear
 
 # Image Types
 StandardType=Standard (tiny11maker)
@@ -24,6 +25,7 @@ SystemOptimizations=Features to Disable
 SystemRequirements=System Requirements to Bypass
 InstallationProcess=Installation Steps to Skip
 DeepCleanup=Size Reduction (Deep Cleanup)
+AutounattendSection=Custom autounattend.xml (Optional)
 
 # Presets
 PresetMinimal=Minimal
@@ -82,6 +84,8 @@ Error=Error Occurred
 IsoSelected=ISO file selected: {0}
 WorkingDirSelected=Working directory selected: {0}
 OutputPathSelected=Output ISO path selected: {0}
+AutounattendSelected=Custom autounattend.xml selected: {0}
+AutounattendCleared=Custom autounattend.xml selection cleared.
 
 # Build Process Messages
 BuildStarted=Tiny11 Build Process Started
@@ -104,6 +108,7 @@ SecureBootTooltip=Bypass Secure Boot requirement
 MSAccountTooltip=Allow local account usage
 NetworkTooltip=Installation without internet connection
 PrivacyTooltip=Automatically skip privacy questions
+AutounattendTooltip=Use your own autounattend.xml instead of the built-in OOBE bypass tweaks. It's placed at the root of the final ISO so Windows Setup picks it up automatically.
 
 # Language Selection
 Language=Application Language:
@@ -147,6 +152,7 @@ LogDisableUpdate=Disable Windows Update: {0}
 LogDisableDefender=Disable Defender: {0}
 LogBypassTPM=Bypass TPM: {0}
 LogBypassMSAccount=Bypass MS Account: {0}
+LogCustomAutounattend=Custom autounattend.xml: {0}
 LogYes=Yes
 LogNo=No
 
@@ -230,6 +236,8 @@ IsoDialogTitle=Select Windows 11 ISO File
 IsoDialogFilter=ISO Files (*.iso)|*.iso|All Files (*.*)|*.*
 WorkingDirDialogTitle=Select Working Directory
 OutputDialogTitle=Save Tiny11 ISO File
+AutounattendDialogTitle=Select autounattend.xml File
+AutounattendDialogFilter=XML Files (*.xml)|*.xml|All Files (*.*)|*.*
 CancelConfirmTitle=Cancel Process
 CancelConfirmMessage=Process is running. Are you sure you want to cancel?\n\nIf cancelled:\n- Mounted disks will be unmounted\n- Temporary files will be deleted\n- Incomplete ISO will not be created
 CloseConfirmTitle=Process Running

@@ -12,6 +12,7 @@ SelectButton=Seç...
 SaveButton=Kaydet...
 StartBuildButton=Tiny11 Oluşturmaya Başla
 CancelButton=İptal Et
+ClearButton=Temizle
 
 # Image Types
 StandardType=Standart (tiny11maker)
@@ -24,6 +25,7 @@ SystemOptimizations=Devre Dışı Bırakılacaklar
 SystemRequirements=Atlanacak Sistem Gereksinimleri
 InstallationProcess=Atlanacak Kurulum Süreçleri
 DeepCleanup=Boyut Küçültme (Derin Temizlik)
+AutounattendSection=Özel autounattend.xml (İsteğe Bağlı)
 
 # Presets
 PresetMinimal=Minimal
@@ -82,6 +84,8 @@ Error=Hata Oluştu
 IsoSelected=ISO dosyası seçildi: {0}
 WorkingDirSelected=Çalışma dizini seçildi: {0}
 OutputPathSelected=Çıktı ISO yolu seçildi: {0}
+AutounattendSelected=Özel autounattend.xml seçildi: {0}
+AutounattendCleared=Özel autounattend.xml seçimi temizlendi.
 
 # Build Process Messages
 BuildStarted=Tiny11 Oluşturma İşlemi Başladı
@@ -104,6 +108,7 @@ SecureBootTooltip=Secure Boot gereksinimini atlat
 MSAccountTooltip=Yerel hesap kullanımına izin ver
 NetworkTooltip=İnternet bağlantısı olmadan kurulum
 PrivacyTooltip=Gizlilik sorularını otomatik atla
+AutounattendTooltip=Dahili OOBE bypass ayarları yerine kendi autounattend.xml dosyanızı kullanın. Windows Setup'ın otomatik olarak algılaması için son ISO'nun kök dizinine yerleştirilir.
 
 # Language Selection
 Language=Uygulama Dili:
@@ -147,6 +152,7 @@ LogDisableUpdate=Windows Update Devre Dışı: {0}
 LogDisableDefender=Defender Devre Dışı: {0}
 LogBypassTPM=TPM Bypass: {0}
 LogBypassMSAccount=MS Hesabı Bypass: {0}
+LogCustomAutounattend=Özel autounattend.xml: {0}
 LogYes=Evet
 LogNo=Hayır
 
@@ -230,6 +236,8 @@ IsoDialogTitle=Windows 11 ISO Dosyası Seç
 IsoDialogFilter=ISO Dosyaları (*.iso)|*.iso|Tüm Dosyalar (*.*)|*.*
 WorkingDirDialogTitle=Çalışma Dizini Seç
 OutputDialogTitle=Tiny11 ISO Dosyasını Kaydet
+AutounattendDialogTitle=autounattend.xml Dosyası Seç
+AutounattendDialogFilter=XML Dosyaları (*.xml)|*.xml|Tüm Dosyalar (*.*)|*.*
 CancelConfirmTitle=İşlemi İptal Et
 CancelConfirmMessage=İşlem devam ediyor. İptal etmek istediğinize emin misiniz?\n\nİptal edilirse:\n- Mount edilmiş diskler unmount edilecek\n- Geçici dosyalar silinecek\n- Yarım kalan ISO oluşturulmayacak
 CloseConfirmTitle=İşlem Devam Ediyor

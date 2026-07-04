@@ -35,6 +35,7 @@ namespace tiny11_ui.ViewModels
         public string SaveButton => _localization.GetString("SaveButton");
         public string StartBuildButton => _localization.GetString("StartBuildButton");
         public string CancelButton => _localization.GetString("CancelButton");
+        public string ClearButton => _localization.GetString("ClearButton");
     }
 
     public class LocalizedHeaders
@@ -53,6 +54,7 @@ namespace tiny11_ui.ViewModels
         public string SystemRequirementsBypass => _localization.GetString("SystemRequirements");
         public string InstallationProcessBypass => _localization.GetString("InstallationProcess");
         public string DeepCleanup => _localization.GetString("DeepCleanup");
+        public string AutounattendSection => _localization.GetString("AutounattendSection");
     }
 
     public class LocalizedPresets
@@ -173,5 +175,6 @@ namespace tiny11_ui.ViewModels
         public string GamingPreset => _localization.GetString("PresetGamingTooltip");
         public string EnterprisePreset => _localization.GetString("PresetEnterpriseTooltip");
         public string LanguageSelector => _localization.GetString("Language");
+        public string AutounattendTooltip => _localization.GetString("AutounattendTooltip");
     }
 }
