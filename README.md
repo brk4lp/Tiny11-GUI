@@ -2,7 +2,7 @@
 
 A WPF front-end for [tiny11builder](https://github.com/ntdevlabs/tiny11builder), the PowerShell scripts that strip down a Windows 11 ISO. All the actual work is done by the tiny11builder scripts; this project just adds a UI on top.
 
-<img width="661" height="912" alt="Tiny11 GUI screenshot" src="https://github.com/user-attachments/assets/6ee45226-d3c3-4266-9289-bb0bba54458a" />
+<img width="1024" height="911" alt="Tiny11 GUI screenshot" src="docs/screenshot.png" />
 
 ## Features
 
