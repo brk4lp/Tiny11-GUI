@@ -252,3 +252,19 @@ LogCleanupError=Cleanup error: {0}
 LogComprehensiveCleanup=Performing comprehensive system cleanup...
 LogComprehensiveCleanupComplete=Comprehensive cleanup completed
 LogCleanupContinue=Cleanup error (continuing): {0}
+LogSystemCleanupInProgress=System cleanup in progress...
+
+# Log Messages - Additional
+LogAdminRightsRecommended=Warning: Running the application with administrator privileges is recommended.
+LogAdminRightsNeededForEditions=Administrator privileges may be required to read Windows editions.
+LogProcessCompletedBanner=*** Process Completed Successfully ***
+LogProcessFailedBanner=*** Process Ended With Error Code: {0} ***
+LogPresetMinimalApplied=Minimal preset applied - Maximum optimization
+LogPresetBalancedApplied=Balanced preset applied - Balanced optimization
+LogPresetGamingApplied=Gaming preset applied - Performance optimization
+LogPresetEnterpriseApplied=Enterprise preset applied - Business environment optimization
+LogEditionParseLineError=Parse error: {0} - Line: {1}
+LogEditionParseFallback=Parsing failed, adding all default editions...
+LogEditionsRetrievalFailed=Could not retrieve Windows editions: {0}
+LogIsoUnmounted=ISO unmounted.
+LogIsoUnmountError=ISO unmount error: {0}

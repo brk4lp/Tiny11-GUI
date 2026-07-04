@@ -666,9 +666,9 @@ namespace tiny11_ui.ViewModels
             {
                 if (!IsRunningAsAdministrator())
                 {
-                    LogOutput += "⚠️  UYARI: Uygulamanın yönetici yetkisiyle çalışması önerilir.\n";
-                    LogOutput += "Windows sürümlerini okumak için yönetici yetkisi gerekebilir.\n";
-                    LogOutput += "Varsayılan sürümler yükleniyor...\n\n";
+                    LogOutput += GetLocalizedString("LogAdminRightsRecommended") + "\n";
+                    LogOutput += GetLocalizedString("LogAdminRightsNeededForEditions") + "\n";
+                    LogOutput += GetLocalizedString("LoadingDefaultEditions") + "\n\n";
                     
                     // Yönetici yetkisi yoksa tüm varsayılan sürümler ekle
                     WindowsEditions.Clear();
@@ -742,7 +742,7 @@ namespace tiny11_ui.ViewModels
                 
                 // Progress tracking based on output messages
                 if (output.Contains("Exporting image"))
-                    StatusText = "📤 Exporting image...";
+                    StatusText = "Exporting image...";
                 else if (output.Contains("Unmounting image"))
                     StatusText = GetLocalizedString("StatusUnmounting");
                 else if (output.Contains("Cleanup complete"))
@@ -769,13 +769,13 @@ namespace tiny11_ui.ViewModels
         {
             if (exitCode == 0)
             {
-                StatusText = "İşlem başarıyla tamamlandı!";
-                LogOutput += "\n=== İşlem Başarıyla Tamamlandı ===\n";
+                StatusText = GetLocalizedString("Completed");
+                LogOutput += "\n" + GetLocalizedString("LogProcessCompletedBanner") + "\n";
             }
             else
             {
-                StatusText = "İşlem hatayla sonlandı!";
-                LogOutput += $"\n=== İşlem Hata Koduyla Sonlandı: {exitCode} ===\n";
+                StatusText = GetLocalizedString("Error");
+                LogOutput += "\n" + string.Format(GetLocalizedString("LogProcessFailedBanner"), exitCode) + "\n";
             }
             
             // ISO'yu unmount et
@@ -825,7 +825,7 @@ namespace tiny11_ui.ViewModels
             RemoveInputComponents = true;
             CleanupDriverStore = true;
 
-            LogOutput += "🎯 Minimal preset uygulandı - Maksimum optimizasyon\n";
+            LogOutput += GetLocalizedString("LogPresetMinimalApplied") + "\n";
         }
 
         private void ApplyBalancedPreset()
@@ -863,7 +863,7 @@ namespace tiny11_ui.ViewModels
             RemoveInputComponents = false;
             CleanupDriverStore = false;
 
-            LogOutput += "⚖️ Balanced preset uygulandı - Dengeli optimizasyon\n";
+            LogOutput += GetLocalizedString("LogPresetBalancedApplied") + "\n";
         }
 
         private void ApplyGamingPreset()
@@ -901,7 +901,7 @@ namespace tiny11_ui.ViewModels
             RemoveInputComponents = false;
             CleanupDriverStore = false;
 
-            LogOutput += "🎮 Gaming preset uygulandı - Performans optimizasyonu\n";
+            LogOutput += GetLocalizedString("LogPresetGamingApplied") + "\n";
         }
 
         private void ApplyEnterprisePreset()
@@ -939,7 +939,7 @@ namespace tiny11_ui.ViewModels
             RemoveInputComponents = false; // Erişilebilirlik ihtiyaçları
             CleanupDriverStore = false; // Farklı donanımlar için geniş sürücü desteği
 
-            LogOutput += "🏢 Enterprise preset uygulandı - İş ortamı optimizasyonu\n";
+            LogOutput += GetLocalizedString("LogPresetEnterpriseApplied") + "\n";
         }
 
         #endregion
