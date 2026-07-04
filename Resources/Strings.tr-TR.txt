@@ -252,3 +252,19 @@ LogCleanupError=Temizlik hatası: {0}
 LogComprehensiveCleanup=Kapsamlı sistem temizliği yapılıyor...
 LogComprehensiveCleanupComplete=Kapsamlı temizlik tamamlandı
 LogCleanupContinue=Temizlik hatası (devam edilebilir): {0}
+LogSystemCleanupInProgress=Sistem temizliği yapılıyor...
+
+# Log Messages - Additional
+LogAdminRightsRecommended=Uyarı: Uygulamanın yönetici yetkisiyle çalıştırılması önerilir.
+LogAdminRightsNeededForEditions=Windows sürümlerini okumak için yönetici yetkisi gerekebilir.
+LogProcessCompletedBanner=*** İşlem Başarıyla Tamamlandı ***
+LogProcessFailedBanner=*** İşlem Hata Koduyla Sonlandı: {0} ***
+LogPresetMinimalApplied=Minimal preset uygulandı - Maksimum optimizasyon
+LogPresetBalancedApplied=Balanced preset uygulandı - Dengeli optimizasyon
+LogPresetGamingApplied=Gaming preset uygulandı - Performans optimizasyonu
+LogPresetEnterpriseApplied=Enterprise preset uygulandı - İş ortamı optimizasyonu
+LogEditionParseLineError=Parse hatası: {0} - Satır: {1}
+LogEditionParseFallback=Parse başarısız, tüm varsayılan sürümler ekleniyor...
+LogEditionsRetrievalFailed=Windows sürümleri alınamadı: {0}
+LogIsoUnmounted=ISO unmount edildi.
+LogIsoUnmountError=ISO unmount hatası: {0}

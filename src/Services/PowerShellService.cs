@@ -850,7 +850,7 @@ namespace tiny11_ui.Services
                     // İptal istendi mi kontrol et
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        OutputReceived?.Invoke("⏹️ İptal isteği alındı...");
+                        OutputReceived?.Invoke(GetLocalizedString("LogCancelReceived"));
                         throw new OperationCanceledException(cancellationToken);
                     }
                     
@@ -955,27 +955,27 @@ namespace tiny11_ui.Services
                 _currentProcess.BeginOutputReadLine();
                 _currentProcess.BeginErrorReadLine();
                 
-                OutputReceived?.Invoke("📝 PowerShell process başlatıldı, input gönderiliyor...");
-                
+                OutputReceived?.Invoke("PowerShell process başlatıldı, input gönderiliyor...");
+
                 // Input stream'e otomatik değerleri gönder
                 var inputWriter = _currentProcess.StandardInput;
-                
+
                 // Drive letter input için
-                OutputReceived?.Invoke($"📝 ISO path gönderiliyor: {isoPath}");
+                OutputReceived?.Invoke($"ISO path gönderiliyor: {isoPath}");
                 await inputWriter.WriteLineAsync(isoPath);
                 await inputWriter.FlushAsync();
-                
-                // Image index input için  
-                OutputReceived?.Invoke($"📝 Edition index gönderiliyor: {editionIndex}");
+
+                // Image index input için
+                OutputReceived?.Invoke($"Edition index gönderiliyor: {editionIndex}");
                 await inputWriter.WriteLineAsync(editionIndex.ToString());
                 await inputWriter.FlushAsync();
-                
+
                 // Scratch disk input için
-                OutputReceived?.Invoke($"📝 Scratch path gönderiliyor: {scratchPath}");
+                OutputReceived?.Invoke($"Scratch path gönderiliyor: {scratchPath}");
                 await inputWriter.WriteLineAsync(scratchPath);
                 await inputWriter.FlushAsync();
-                
-                OutputReceived?.Invoke("📝 Tüm input'lar gönderildi, script çalışıyor...");
+
+                OutputReceived?.Invoke("Tüm input'lar gönderildi, script çalışıyor...");
                 
                 // Input stream'i kapat
                 inputWriter.Close();
@@ -988,7 +988,7 @@ namespace tiny11_ui.Services
                 
                 if (completedTask == timeoutTask)
                 {
-                    OutputReceived?.Invoke("⚠️ İşlem zaman aşımına uğradı, temizlik yapılıyor...");
+                    OutputReceived?.Invoke("İşlem zaman aşımına uğradı, temizlik yapılıyor...");
                     _currentProcess?.Kill();
                     await CleanupEnvironmentAsync();
                     return false;
@@ -1127,18 +1127,15 @@ namespace tiny11_ui.Services
                 ";
 
                 var result = await RunPowerShellCommandAsync(script);
-                
+
                 // Output'u parse et
                 var editions = new List<string>();
                 var lines = result.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-                
-                OutputReceived?.Invoke($"PowerShell output debug: {lines.Length} satır alındı");
-                
+
                 foreach (var line in lines)
                 {
                     var cleanLine = line.Trim();
-                    OutputReceived?.Invoke($"Parsing line: {cleanLine}");
-                    
+
                     if (cleanLine.StartsWith("INDEX:") && cleanLine.Contains("NAME:") && cleanLine.Contains("DRIVE:"))
                     {
                         try
@@ -1150,25 +1147,24 @@ namespace tiny11_ui.Services
                                 var index = parts[1];
                                 var nameStartIndex = cleanLine.IndexOf(":NAME:") + 6;
                                 var driveStartIndex = cleanLine.IndexOf(":DRIVE:");
-                                
+
                                 if (nameStartIndex > 5 && driveStartIndex > nameStartIndex)
                                 {
                                     var name = cleanLine.Substring(nameStartIndex, driveStartIndex - nameStartIndex);
                                     editions.Add($"{index} - {name}");
-                                    OutputReceived?.Invoke($"Edition eklendi: {index} - {name}");
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            OutputReceived?.Invoke($"Parse hatası: {ex.Message} - Line: {cleanLine}");
+                            OutputReceived?.Invoke(string.Format(GetLocalizedString("LogEditionParseLineError"), ex.Message, cleanLine));
                         }
                     }
                 }
 
                 if (editions.Count == 0)
                 {
-                    OutputReceived?.Invoke("Parse başarısız, tüm varsayılan sürümler ekleniyor...");
+                    OutputReceived?.Invoke(GetLocalizedString("LogEditionParseFallback"));
                     // Fallback: Tüm sürümleri ekle
                     editions.Add("1 - Windows 11 Home");
                     editions.Add("2 - Windows 11 Home Single Language");
@@ -1176,19 +1172,13 @@ namespace tiny11_ui.Services
                     editions.Add("4 - Windows 11 Pro");
                     editions.Add("5 - Windows 11 Pro Education");
                     editions.Add("6 - Windows 11 Pro for Workstations");
-                    
-                    OutputReceived?.Invoke("Varsayılan Windows sürümleri yüklendi.");
-                }
-                else
-                {
-                    OutputReceived?.Invoke($"{editions.Count} Windows sürümü başarıyla parse edildi.");
                 }
 
                 return editions.ToArray();
             }
             catch (Exception ex)
             {
-                ErrorReceived?.Invoke($"Windows sürümleri alınamadı: {ex.Message}");
+                ErrorReceived?.Invoke(string.Format(GetLocalizedString("LogEditionsRetrievalFailed"), ex.Message));
                 
                 // Hata durumunda tüm varsayılan sürümler döndür
                 return new[] { 
@@ -1237,11 +1227,11 @@ namespace tiny11_ui.Services
                 var escapedIsoPath = isoPath.Replace("'", "''");
                 var script = $"Dismount-DiskImage -ImagePath '{escapedIsoPath}' -ErrorAction SilentlyContinue";
                 await RunPowerShellCommandAsync(script);
-                OutputReceived?.Invoke("ISO unmount edildi.");
+                OutputReceived?.Invoke(GetLocalizedString("LogIsoUnmounted"));
             }
             catch (Exception ex)
             {
-                ErrorReceived?.Invoke($"ISO unmount hatası: {ex.Message}");
+                ErrorReceived?.Invoke(string.Format(GetLocalizedString("LogIsoUnmountError"), ex.Message));
             }
         }
 
@@ -1289,7 +1279,7 @@ namespace tiny11_ui.Services
         {
             try
             {
-                OutputReceived?.Invoke("🧹 Sistem temizliği yapılıyor...");
+                OutputReceived?.Invoke(GetLocalizedString("LogSystemCleanupInProgress"));
                 
                 // DISM cleanup
                 var dismProcess = new Process

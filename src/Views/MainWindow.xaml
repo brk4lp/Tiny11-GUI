@@ -6,8 +6,8 @@
         xmlns:viewModels="clr-namespace:tiny11_ui.ViewModels"
         xmlns:converters="clr-namespace:tiny11_ui.Converters"
         mc:Ignorable="d"
-        Title="Tiny11 GUI" 
-        Height="920" Width="680" 
+        Title="Tiny11 GUI"
+        Height="920" Width="1040"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
     
@@ -76,25 +76,29 @@
     </Window.Resources>
     
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="420"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- Header -->
-        <Border Grid.Row="0" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,0,0,1" Padding="10,6">
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,0,0,1" Padding="10,6">
             <Grid>
                 <TextBlock Text="Tiny11 Builder" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#333"/>
-                <ComboBox ItemsSource="{Binding AvailableLanguages}" 
-                          SelectedItem="{Binding SelectedLanguage}" 
+                <ComboBox ItemsSource="{Binding AvailableLanguages}"
+                          SelectedItem="{Binding SelectedLanguage}"
                           Width="110" Height="22" FontSize="11"
                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
             </Grid>
         </Border>
-        
+
         <!-- Main Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid Margin="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -102,8 +106,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*" MinHeight="100"/>
                 </Grid.RowDefinitions>
                 
                 <!-- Row 0: ISO Selection -->
@@ -257,40 +259,40 @@
                 </GroupBox>
                 
                 <!-- Row 4: Buttons -->
-                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,8">
-                    <Button Command="{Binding StartBuildCommand}" 
-                            Content="{Binding LocalizedButtons.StartBuildButton}" 
-                            IsEnabled="{Binding IsBuildRunning, Converter={StaticResource InverseBoolConverter}}"
+                <Grid Grid.Row="4" HorizontalAlignment="Center" Margin="0,5,0,8">
+                    <Button Command="{Binding StartBuildCommand}"
+                            Content="{Binding LocalizedButtons.StartBuildButton}"
+                            Visibility="{Binding IsBuildRunning, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                             Style="{StaticResource PrimaryButton}"/>
-                    <Button Command="{Binding CancelBuildCommand}" 
-                            Content="{Binding LocalizedButtons.CancelButton}" 
+                    <Button Command="{Binding CancelBuildCommand}"
+                            Content="{Binding LocalizedButtons.CancelButton}"
                             Visibility="{Binding IsBuildRunning, Converter={StaticResource BoolToVisibilityConverter}}"
-                            Style="{StaticResource DangerButton}"/>
-                </StackPanel>
-                
-                <!-- Row 5: Log Output -->
-                <GroupBox Header="Log" Grid.Row="6" Style="{StaticResource CompactGroupBox}">
-                    <TextBox x:Name="LogTextBox"
-                             Text="{Binding LogOutput, Mode=OneWay}" 
-                             IsReadOnly="True" 
-                             VerticalScrollBarVisibility="Auto" 
-                             HorizontalScrollBarVisibility="Auto" 
-                             FontFamily="Consolas" 
-                             FontSize="10"
-                             TextWrapping="NoWrap"
-                             Height="150"
-                             MaxHeight="150"
-                             Background="#1e1e1e"
-                             Foreground="#d4d4d4"
-                             Padding="5"
-                             BorderThickness="0"
-                             TextChanged="LogTextBox_TextChanged"/>
-                </GroupBox>
+                            Style="{StaticResource DangerButton}"
+                            MinWidth="150"
+                            Margin="0"/>
+                </Grid>
             </Grid>
         </ScrollViewer>
-        
+
+        <!-- Log Panel (right side) -->
+        <GroupBox Header="Log" Grid.Row="1" Grid.Column="1" Margin="0,10,10,10" Style="{StaticResource CompactGroupBox}">
+            <TextBox x:Name="LogTextBox"
+                     Text="{Binding LogOutput, Mode=OneWay}"
+                     IsReadOnly="True"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Disabled"
+                     FontFamily="Consolas"
+                     FontSize="10"
+                     TextWrapping="Wrap"
+                     Background="#1e1e1e"
+                     Foreground="#d4d4d4"
+                     Padding="5"
+                     BorderThickness="0"
+                     TextChanged="LogTextBox_TextChanged"/>
+        </GroupBox>
+
         <!-- Status Bar -->
-        <StatusBar Grid.Row="2" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,1,0,0" Height="22">
+        <StatusBar Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,1,0,0" Height="22">
             <StatusBar.ItemsPanel>
                 <ItemsPanelTemplate>
                     <Grid>
