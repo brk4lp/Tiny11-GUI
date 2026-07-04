@@ -180,6 +180,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
                         <!-- Presets -->
@@ -242,8 +243,22 @@
                             </WrapPanel>
                         </GroupBox>
 
+                        <!-- Custom autounattend.xml -->
+                        <GroupBox Header="{Binding LocalizedHeaders.AutounattendSection}" Grid.Row="4" Style="{StaticResource CompactGroupBox}" ToolTip="{Binding LocalizedTooltips.AutounattendTooltip}">
+                            <Grid Margin="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding CustomAutounattendPath}" Grid.Column="0" Style="{StaticResource CompactTextBox}" IsReadOnly="True"/>
+                                <Button Command="{Binding BrowseAutounattendCommand}" Content="{Binding LocalizedButtons.BrowseButton}" Grid.Column="1" Style="{StaticResource CompactButton}"/>
+                                <Button Command="{Binding ClearAutounattendCommand}" Content="{Binding LocalizedButtons.ClearButton}" Grid.Column="2" Style="{StaticResource CompactButton}"/>
+                            </Grid>
+                        </GroupBox>
+
                         <!-- Deep Cleanup / Size Reduction -->
-                        <GroupBox Header="{Binding LocalizedHeaders.DeepCleanup}" Grid.Row="4" Style="{StaticResource CompactGroupBox}">
+                        <GroupBox Header="{Binding LocalizedHeaders.DeepCleanup}" Grid.Row="5" Style="{StaticResource CompactGroupBox}">
                             <WrapPanel Margin="3">
                                 <CheckBox IsChecked="{Binding CleanupComponentStore}" Content="{Binding LocalizedDeepCleanup.ComponentStoreCleanup}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>
                                 <CheckBox IsChecked="{Binding CompressFinalImage}" Content="{Binding LocalizedDeepCleanup.CompressImage}" Style="{StaticResource CompactCheckBox}" Margin="0,0,12,0"/>

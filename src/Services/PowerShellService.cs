@@ -19,9 +19,11 @@ namespace tiny11_ui.Services
         private Process? _currentProcess;
         private CancellationTokenSource? _cancellationTokenSource;
         private bool _isRunning;
+        private string? _currentWorkDir;
         private string? _currentMountDir;
+        private string? _currentMountDirRetry;
+        private string? _currentIsoDir;
         private string? _currentIsoPath;
-        private string? _currentScratchPath;
         private readonly LocalizationService _localizationService;
 
         public PowerShellService(LocalizationService localizationService)
@@ -88,10 +90,15 @@ namespace tiny11_ui.Services
             OutputReceived?.Invoke(GetLocalizedString("LogCancelCleanup") + "\n");
 
             // Mount edilmiş WIM'i unmount et (discard - değişiklikleri atarak)
-            if (!string.IsNullOrEmpty(_currentMountDir) && Directory.Exists(_currentMountDir))
+            // Mount, başarısız ilk denemeden sonra script içinde retry dizinine geçmiş olabilir,
+            // bu yüzden ikisi de kontrol edilir.
+            foreach (var mountDir in new[] { _currentMountDir, _currentMountDirRetry })
             {
-                OutputReceived?.Invoke("   " + GetLocalizedString("LogWimUnmounting") + "\n");
-                await RunCleanupCommandAsync($"dism /unmount-wim /mountdir:\"{_currentMountDir}\" /discard");
+                if (!string.IsNullOrEmpty(mountDir) && Directory.Exists(mountDir))
+                {
+                    OutputReceived?.Invoke("   " + GetLocalizedString("LogWimUnmounting") + "\n");
+                    await RunCleanupCommandAsync($"dism /unmount-wim /mountdir:\"{mountDir}\" /discard");
+                }
             }
 
             // Mount edilmiş ISO'yu unmount et
@@ -108,23 +115,17 @@ namespace tiny11_ui.Services
             await RunCleanupCommandAsync("reg unload HKU\\OFFLINE_NTUSER 2>nul");
 
             // Geçici dosyaları temizle
-            if (!string.IsNullOrEmpty(_currentScratchPath))
+            OutputReceived?.Invoke("   " + GetLocalizedString("LogTempFilesDeleting") + "\n");
+            try
             {
-                OutputReceived?.Invoke("   " + GetLocalizedString("LogTempFilesDeleting") + "\n");
-                try
-                {
-                    var workDir = Path.Combine(_currentScratchPath, "tiny11_work");
-                    var mountDir = Path.Combine(_currentScratchPath, "tiny11_mount");
-                    var isoDir = Path.Combine(_currentScratchPath, "tiny11_iso");
-
-                    if (Directory.Exists(workDir)) Directory.Delete(workDir, true);
-                    if (Directory.Exists(mountDir)) Directory.Delete(mountDir, true);
-                    if (Directory.Exists(isoDir)) Directory.Delete(isoDir, true);
-                }
-                catch (Exception ex)
-                {
-                    OutputReceived?.Invoke("   " + string.Format(GetLocalizedString("LogTempFilesError"), ex.Message) + "\n");
-                }
+                if (!string.IsNullOrEmpty(_currentWorkDir) && Directory.Exists(_currentWorkDir)) Directory.Delete(_currentWorkDir, true);
+                if (!string.IsNullOrEmpty(_currentMountDir) && Directory.Exists(_currentMountDir)) Directory.Delete(_currentMountDir, true);
+                if (!string.IsNullOrEmpty(_currentMountDirRetry) && Directory.Exists(_currentMountDirRetry)) Directory.Delete(_currentMountDirRetry, true);
+                if (!string.IsNullOrEmpty(_currentIsoDir) && Directory.Exists(_currentIsoDir)) Directory.Delete(_currentIsoDir, true);
+            }
+            catch (Exception ex)
+            {
+                OutputReceived?.Invoke("   " + string.Format(GetLocalizedString("LogTempFilesError"), ex.Message) + "\n");
             }
         }
 
@@ -179,13 +180,19 @@ namespace tiny11_ui.Services
             _isRunning = true;
             _cancellationTokenSource = new CancellationTokenSource();
             _currentIsoPath = isoPath;
-            _currentScratchPath = scratchPath;
-            _currentMountDir = Path.Combine(scratchPath, "tiny11_mount");
+
+            // Timestamp burada üretilip script'e sabit değer olarak geçiriliyor; script kendi
+            // $timestamp'ini üretseydi, bu sınıftaki dizin referansları gerçek dizinlerden sapardı.
+            var buildTimestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            _currentWorkDir = Path.Combine(scratchPath, $"tiny11_work_{buildTimestamp}");
+            _currentMountDir = Path.Combine(scratchPath, $"tiny11_mount_{buildTimestamp}");
+            _currentMountDirRetry = Path.Combine(scratchPath, $"tiny11_mount_retry_{buildTimestamp}");
+            _currentIsoDir = Path.Combine(scratchPath, $"tiny11_iso_{buildTimestamp}");
 
             try
             {
                 // Önce kapsamlı cleanup yap
-                await ComprehensiveCleanupAsync();
+                await ComprehensiveCleanupAsync(scratchPath);
 
                 OutputReceived?.Invoke(GetLocalizedString("LogTiny11Starting"));
                 OutputReceived?.Invoke(string.Format(GetLocalizedString("LogIsoPath"), isoPath));
@@ -195,7 +202,7 @@ namespace tiny11_ui.Services
                 OutputReceived?.Invoke("");
 
                 // Seçeneklere göre dinamik PowerShell scripti oluştur
-                var script = GenerateTiny11Script(isoPath, scratchPath, outputPath, editionIndex, options);
+                var script = GenerateTiny11Script(isoPath, scratchPath, outputPath, editionIndex, options, buildTimestamp);
 
                 // Scripti geçici dosyaya yaz
                 var tempScriptPath = Path.Combine(Path.GetTempPath(), $"tiny11_custom_{DateTime.Now:yyyyMMddHHmmss}.ps1");
@@ -240,16 +247,16 @@ namespace tiny11_ui.Services
         /// <summary>
         /// Oluşturulacak script'i önizleme için döndürür (çalıştırmadan)
         /// </summary>
-        public string PreviewScript(string isoPath, string scratchPath, string outputPath, 
+        public string PreviewScript(string isoPath, string scratchPath, string outputPath,
             int editionIndex, ComponentRemovalOptions options, bool isCoreBuild = false)
         {
-            return GenerateTiny11Script(isoPath, scratchPath, outputPath, editionIndex, options);
+            return GenerateTiny11Script(isoPath, scratchPath, outputPath, editionIndex, options, DateTime.Now.ToString("yyyyMMddHHmmss"));
         }
 
         /// <summary>
         /// Kullanıcı seçeneklerine göre dinamik PowerShell scripti oluşturur
         /// </summary>
-        private string GenerateTiny11Script(string isoPath, string scratchPath, string outputPath, int editionIndex, ComponentRemovalOptions options)
+        private string GenerateTiny11Script(string isoPath, string scratchPath, string outputPath, int editionIndex, ComponentRemovalOptions options, string buildTimestamp)
         {
             var sb = new StringBuilder();
 
@@ -295,7 +302,7 @@ namespace tiny11_ui.Services
 
             // Dizin hazırlama - Her zaman benzersiz dizin kullan
             sb.AppendLine(@"# Benzersiz çalışma dizinleri oluştur (önceki mount sorunlarını önlemek için)");
-            sb.AppendLine(@"$timestamp = Get-Date -Format 'yyyyMMddHHmmss'");
+            sb.AppendLine($@"$timestamp = '{buildTimestamp}'");
             sb.AppendLine(@"$workDir = Join-Path $scratchPath ""tiny11_work_$timestamp""");
             sb.AppendLine(@"$mountDir = Join-Path $scratchPath ""tiny11_mount_$timestamp""");
             sb.AppendLine(@"$isoDir = Join-Path $scratchPath ""tiny11_iso_$timestamp""");
@@ -354,6 +361,15 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"Copy-Item -Path ""$driveLetter\*"" -Destination $isoDir -Recurse -Force");
             sb.AppendLine();
 
+            // Kullanıcının sağladığı özel autounattend.xml dosyasını ISO köküne kopyala
+            if (!string.IsNullOrWhiteSpace(options.CustomAutounattendPath))
+            {
+                sb.AppendLine(@"# Özel autounattend.xml dosyasını kopyala");
+                sb.AppendLine(@"Write-Host 'Copying custom autounattend.xml...' -ForegroundColor Cyan");
+                sb.AppendLine($@"Copy-Item -Path '{options.CustomAutounattendPath.Replace("'", "''")}' -Destination (Join-Path $isoDir 'autounattend.xml') -Force");
+                sb.AppendLine();
+            }
+
             // WIM/ESD dosyasını bul
             sb.AppendLine(@"# WIM dosyasını bul");
             sb.AppendLine(@"$wimPath = Join-Path $isoDir 'sources\install.wim'");
@@ -389,8 +405,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"    Start-Sleep -Seconds 3");
             sb.AppendLine(@"    ");
             sb.AppendLine(@"    # Yeni dizin ile tekrar dene");
-            sb.AppendLine(@"    $retryTimestamp = Get-Date -Format 'yyyyMMddHHmmss'");
-            sb.AppendLine(@"    $mountDir = Join-Path $scratchPath ""tiny11_mount_retry_$retryTimestamp""");
+            sb.AppendLine($@"    $mountDir = Join-Path $scratchPath ""tiny11_mount_retry_{buildTimestamp}""");
             sb.AppendLine(@"    New-Item -ItemType Directory -Force -Path $mountDir | Out-Null");
             sb.AppendLine(@"    Write-Host ""   Retrying with: $mountDir"" -ForegroundColor Gray");
             sb.AppendLine(@"    ");
@@ -875,8 +890,8 @@ namespace tiny11_ui.Services
             try
             {
                 // Önce kapsamlı cleanup yap
-                await ComprehensiveCleanupAsync();
-                
+                await ComprehensiveCleanupAsync(scratchPath);
+
                 var scriptName = isCoreVersion ? "tiny11Coremaker.ps1" : "tiny11maker.ps1";
                 var fullScriptPath = Path.Combine(scriptPath, scriptName);
                 
@@ -1323,19 +1338,19 @@ namespace tiny11_ui.Services
             }
         }
 
-        private async Task ComprehensiveCleanupAsync()
+        private async Task ComprehensiveCleanupAsync(string scratchPath)
         {
             try
             {
                 OutputReceived?.Invoke(GetLocalizedString("LogComprehensiveCleanup"));
-                
+
                 // 1. Mevcut PowerShell processlerini sonlandır
                 var processes = Process.GetProcessesByName("powershell");
                 foreach (var proc in processes.Where(p => p.Id != Environment.ProcessId))
                 {
                     try
                     {
-                        if (proc.MainWindowTitle.Contains("tiny11") || 
+                        if (proc.MainWindowTitle.Contains("tiny11") ||
                             proc.ProcessName.Contains("powershell"))
                         {
                             proc.Kill();
@@ -1344,41 +1359,33 @@ namespace tiny11_ui.Services
                     }
                     catch { /* Ignore */ }
                 }
-                
+
                 // 2. Mount edilmiş image'ları temizle
                 await CleanupEnvironmentAsync();
-                
+
                 // 3. Dosya kilitleri için bekle
                 await Task.Delay(2000);
-                
-                // 4. Çalışma dizinini temizle
-                var workspacePath = @"C:\Users\berke\Documents\tiny11builder-workspace";
-                var pathsToClean = new[]
+
+                // 4. Çalışma dizininde önceki (yarım kalmış/çökmüş) çalışmalardan kalan
+                // zaman damgalı dizinleri temizle
+                if (Directory.Exists(scratchPath))
                 {
-                    Path.Combine(workspacePath, "tiny11"),
-                    Path.Combine(workspacePath, "scratchdir"),
-                    Path.Combine(workspacePath, "tiny11.iso")
-                };
-                
-                foreach (var path in pathsToClean)
-                {
-                    try
+                    foreach (var pattern in new[] { "tiny11_work_*", "tiny11_mount_*", "tiny11_iso_*" })
                     {
-                        if (Directory.Exists(path))
+                        foreach (var path in Directory.GetDirectories(scratchPath, pattern))
                         {
-                            Directory.Delete(path, true);
+                            try
+                            {
+                                Directory.Delete(path, true);
+                            }
+                            catch (Exception ex)
+                            {
+                                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
+                            }
                         }
-                        else if (File.Exists(path))
-                        {
-                            File.Delete(path);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
                     }
                 }
-                
+
                 OutputReceived?.Invoke(GetLocalizedString("LogComprehensiveCleanupComplete"));
             }
             catch (Exception ex)

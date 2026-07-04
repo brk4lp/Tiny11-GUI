@@ -52,6 +52,17 @@ namespace tiny11_ui.ViewModels
             }
         }
 
+        private string _customAutounattendPath = string.Empty;
+        public string CustomAutounattendPath
+        {
+            get => _customAutounattendPath;
+            set
+            {
+                _customAutounattendPath = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool _isStandardBuild = true;
         public bool IsStandardBuild
         {
@@ -314,6 +325,8 @@ namespace tiny11_ui.ViewModels
         public ICommand BrowseIsoCommand { get; }
         public ICommand BrowseScratchCommand { get; }
         public ICommand BrowseOutputCommand { get; }
+        public ICommand BrowseAutounattendCommand { get; }
+        public ICommand ClearAutounattendCommand { get; }
         public ICommand ChangeLanguageCommand { get; }
         public RelayCommand StartBuildCommand { get; }
         public RelayCommand CancelBuildCommand { get; }
@@ -357,6 +370,8 @@ namespace tiny11_ui.ViewModels
             BrowseIsoCommand = new RelayCommand(BrowseIso);
             BrowseScratchCommand = new RelayCommand(BrowseScratch);
             BrowseOutputCommand = new RelayCommand(BrowseOutput);
+            BrowseAutounattendCommand = new RelayCommand(BrowseAutounattend);
+            ClearAutounattendCommand = new RelayCommand(ClearAutounattend);
             ChangeLanguageCommand = new RelayCommand(ChangeLanguage);
             StartBuildCommand = new RelayCommand(StartBuild, CanStartBuild);
             CancelBuildCommand = new RelayCommand(CancelBuild, () => IsBuildRunning);
@@ -421,6 +436,31 @@ namespace tiny11_ui.ViewModels
                 OutputPath = saveFileDialog.FileName;
                 LogOutput += string.Format(GetLocalizedString("OutputPathSelected"), OutputPath) + "\n";
             }
+        }
+
+        private void BrowseAutounattend()
+        {
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = GetLocalizedString("AutounattendDialogTitle"),
+                Filter = GetLocalizedString("AutounattendDialogFilter"),
+                FilterIndex = 1
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                CustomAutounattendPath = openFileDialog.FileName;
+                LogOutput += string.Format(GetLocalizedString("AutounattendSelected"), CustomAutounattendPath) + "\n";
+            }
+        }
+
+        private void ClearAutounattend()
+        {
+            if (string.IsNullOrEmpty(CustomAutounattendPath))
+                return;
+
+            CustomAutounattendPath = string.Empty;
+            LogOutput += GetLocalizedString("AutounattendCleared") + "\n";
         }
 
         /// <summary>
@@ -527,6 +567,7 @@ namespace tiny11_ui.ViewModels
                     BypassMSAccount = BypassMSAccount,
                     SkipNetworkConnection = SkipNetworkConnection,
                     SkipPrivacyQuestions = SkipPrivacyQuestions,
+                    CustomAutounattendPath = string.IsNullOrWhiteSpace(CustomAutounattendPath) ? null : CustomAutounattendPath,
 
                     // Derin temizlik / boyut küçültme
                     CleanupComponentStore = CleanupComponentStore,
@@ -561,6 +602,7 @@ namespace tiny11_ui.ViewModels
                 LogOutput += "   " + string.Format(GetLocalizedString("LogDisableDefender"), DisableDefender ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogBypassTPM"), BypassTPM ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogBypassMSAccount"), BypassMSAccount ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogCustomAutounattend"), string.IsNullOrWhiteSpace(CustomAutounattendPath) ? no : CustomAutounattendPath) + "\n";
                 LogOutput += "\n";
 
                 // Edition index'i Windows sürümü string'inden çıkar

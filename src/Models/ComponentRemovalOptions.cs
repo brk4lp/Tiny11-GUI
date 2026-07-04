@@ -32,6 +32,12 @@ namespace tiny11_ui.Models
         public bool SkipNetworkConnection { get; set; } = true;
         public bool SkipPrivacyQuestions { get; set; } = true;
 
+        /// <summary>
+        /// Kullanıcının sağladığı özel autounattend.xml dosyasının yolu (opsiyonel).
+        /// Belirtilmişse, oluşturulan ISO'nun kök dizinine kopyalanır.
+        /// </summary>
+        public string? CustomAutounattendPath { get; set; }
+
         // Derin Temizlik / Boyut Küçültme
         public bool CleanupComponentStore { get; set; } = true;
         public bool CompressFinalImage { get; set; } = true;
