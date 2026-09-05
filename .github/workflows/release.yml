@@ -47,7 +47,7 @@ jobs:
         run: ./scripts/Publish-Release.ps1 -Version $env:PACKAGE_VERSION
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: Tiny11-GUI-v${{ steps.version.outputs.value }}-win-x64
           path: |
