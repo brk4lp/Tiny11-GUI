@@ -9,7 +9,7 @@
     <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4" />
     <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-0078D4" />
   </p>
-  <p><a href="https://github.com/brk4lp/Tiny11-GUI/releases">Download</a> · <a href="#quick-start">Quick start</a> · <a href="ROADMAP.md">Roadmap</a> · <a href="CONTRIBUTING.md">Contribute</a></p>
+  <p><a href="https://github.com/brk4lp/Tiny11-GUI/releases">Download</a> · <a href="#quick-start">Quick start</a> · <a href="CONTRIBUTING.md">Contribute</a></p>
 </div>
 
 Tiny11 GUI is inspired by [tiny11builder](https://github.com/ntdevlabs/tiny11builder). It turns your own Windows 11 ISO into a customized image through a WPF interface and a generated, fail-fast PowerShell/DISM workflow. It does **not** distribute Windows media or product keys.

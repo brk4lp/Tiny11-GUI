@@ -2,6 +2,7 @@
 bin/
 obj/
 artifacts/
+ROADMAP.md
 
 # Visual Studio
 .vs/

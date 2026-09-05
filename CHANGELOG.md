@@ -4,6 +4,8 @@ Notable changes to Tiny11 GUI are documented here. The project follows semantic 
 
 ## Unreleased
 
+## 1.2.0 — 2026-09-06
+
 ### Added
 
 - Russian, Japanese, German, French, Spanish, and Simplified Chinese UI resources with English fallback.
