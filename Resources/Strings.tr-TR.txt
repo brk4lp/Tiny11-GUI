@@ -116,6 +116,7 @@ LanguageTurkish=Türkçe
 LanguageEnglish=English
 LanguageChangedTR=Dil Türkçe olarak değiştirildi
 LanguageChangedEN=Dil İngilizce olarak değiştirildi
+LanguageChanged=Dil {0} olarak değiştirildi
 
 # Image Types Content
 StandardTypeContent=Standart (tiny11maker)

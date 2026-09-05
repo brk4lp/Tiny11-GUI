@@ -15,6 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
     <None Update="Resources\*.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

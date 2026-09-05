@@ -1034,7 +1034,9 @@ namespace tiny11_ui.ViewModels
             }
             
             // Log'a dil değişikliği mesajı ekle
-            var message = GetLocalizedString(languageCode == "tr-TR" ? "LanguageChangedTR" : "LanguageChangedEN");
+            var languageName = AvailableLanguages.FirstOrDefault(language => language.Code == languageCode)?.DisplayName
+                               ?? languageCode;
+            var message = string.Format(GetLocalizedString("LanguageChanged"), languageName);
             LogOutput += $"{message}\n";
             
             // Dialog'ları da güncelle

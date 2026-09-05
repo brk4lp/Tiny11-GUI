@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and compatibility results
+    url: https://github.com/brk4lp/Tiny11-GUI/discussions
+    about: Ask for help or share a successful Windows image combination.
+  - name: Security vulnerability
+    url: https://github.com/brk4lp/Tiny11-GUI/security/advisories/new
+    about: Report security-sensitive problems privately.

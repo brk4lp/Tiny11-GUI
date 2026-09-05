@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using tiny11_ui.Models;
@@ -24,7 +25,26 @@ namespace tiny11_ui.Services
         private string? _currentMountDirRetry;
         private string? _currentIsoDir;
         private string? _currentIsoPath;
+        private string? _currentScratchPath;
+        private string? _currentStatePath;
+        private string? _currentRunId;
         private readonly LocalizationService _localizationService;
+
+        private sealed class BuildRunState
+        {
+            public int SchemaVersion { get; set; } = 1;
+            public string RunId { get; set; } = string.Empty;
+            public string ScratchPath { get; set; } = string.Empty;
+            public string? WorkDirectory { get; set; }
+            public string? MountDirectory { get; set; }
+            public string? RetryMountDirectory { get; set; }
+            public string? IsoDirectory { get; set; }
+            public string? IsoPath { get; set; }
+            public int OwnerProcessId { get; set; }
+            public DateTime OwnerProcessStartTimeUtc { get; set; }
+            public int? PowerShellProcessId { get; set; }
+            public DateTime? PowerShellProcessStartTimeUtc { get; set; }
+        }
 
         public PowerShellService(LocalizationService localizationService)
         {
@@ -94,7 +114,9 @@ namespace tiny11_ui.Services
             // bu yüzden ikisi de kontrol edilir.
             foreach (var mountDir in new[] { _currentMountDir, _currentMountDirRetry })
             {
-                if (!string.IsNullOrEmpty(mountDir) && Directory.Exists(mountDir))
+                if (!string.IsNullOrEmpty(_currentScratchPath) &&
+                    IsOwnedScratchDirectory(mountDir, _currentScratchPath, "tiny11_mount_") &&
+                    Directory.Exists(mountDir))
                 {
                     OutputReceived?.Invoke("   " + GetLocalizedString("LogWimUnmounting") + "\n");
                     await RunCleanupCommandAsync($"dism /unmount-wim /mountdir:\"{mountDir}\" /discard");
@@ -105,7 +127,7 @@ namespace tiny11_ui.Services
             if (!string.IsNullOrEmpty(_currentIsoPath))
             {
                 OutputReceived?.Invoke("   " + GetLocalizedString("LogIsoUnmounting") + "\n");
-                await RunCleanupCommandAsync($"powershell -Command \"Dismount-DiskImage -ImagePath '{_currentIsoPath}' -ErrorAction SilentlyContinue\"");
+                await DismountTrackedIsoAsync(_currentIsoPath);
             }
 
             // Registry hive'larını unload et
@@ -116,17 +138,17 @@ namespace tiny11_ui.Services
 
             // Geçici dosyaları temizle
             OutputReceived?.Invoke("   " + GetLocalizedString("LogTempFilesDeleting") + "\n");
-            try
+            foreach (var directory in new[] { _currentWorkDir, _currentMountDir, _currentMountDirRetry, _currentIsoDir })
             {
-                if (!string.IsNullOrEmpty(_currentWorkDir) && Directory.Exists(_currentWorkDir)) Directory.Delete(_currentWorkDir, true);
-                if (!string.IsNullOrEmpty(_currentMountDir) && Directory.Exists(_currentMountDir)) Directory.Delete(_currentMountDir, true);
-                if (!string.IsNullOrEmpty(_currentMountDirRetry) && Directory.Exists(_currentMountDirRetry)) Directory.Delete(_currentMountDirRetry, true);
-                if (!string.IsNullOrEmpty(_currentIsoDir) && Directory.Exists(_currentIsoDir)) Directory.Delete(_currentIsoDir, true);
+                if (!string.IsNullOrEmpty(_currentScratchPath) &&
+                    IsOwnedScratchDirectory(directory, _currentScratchPath,
+                        "tiny11_work_", "tiny11_mount_", "tiny11_iso_"))
+                {
+                    TryDeleteOwnedDirectory(directory!);
+                }
             }
-            catch (Exception ex)
-            {
-                OutputReceived?.Invoke("   " + string.Format(GetLocalizedString("LogTempFilesError"), ex.Message) + "\n");
-            }
+
+            DeleteCurrentRunStateIfResourcesReleased();
         }
 
         /// <summary>
@@ -180,19 +202,25 @@ namespace tiny11_ui.Services
             _isRunning = true;
             _cancellationTokenSource = new CancellationTokenSource();
             _currentIsoPath = isoPath;
+            _currentScratchPath = Path.GetFullPath(scratchPath);
 
             // Timestamp burada üretilip script'e sabit değer olarak geçiriliyor; script kendi
             // $timestamp'ini üretseydi, bu sınıftaki dizin referansları gerçek dizinlerden sapardı.
-            var buildTimestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            _currentWorkDir = Path.Combine(scratchPath, $"tiny11_work_{buildTimestamp}");
-            _currentMountDir = Path.Combine(scratchPath, $"tiny11_mount_{buildTimestamp}");
-            _currentMountDirRetry = Path.Combine(scratchPath, $"tiny11_mount_retry_{buildTimestamp}");
-            _currentIsoDir = Path.Combine(scratchPath, $"tiny11_iso_{buildTimestamp}");
+            _currentRunId = Guid.NewGuid().ToString("N");
+            var buildTimestamp = $"{DateTime.Now:yyyyMMddHHmmssfff}_{_currentRunId[..8]}";
+            _currentWorkDir = Path.Combine(_currentScratchPath, $"tiny11_work_{buildTimestamp}");
+            _currentMountDir = Path.Combine(_currentScratchPath, $"tiny11_mount_{buildTimestamp}");
+            _currentMountDirRetry = Path.Combine(_currentScratchPath, $"tiny11_mount_retry_{buildTimestamp}");
+            _currentIsoDir = Path.Combine(_currentScratchPath, $"tiny11_iso_{buildTimestamp}");
+            _currentStatePath = Path.Combine(_currentScratchPath, $".tiny11-run-{_currentRunId}.json");
+            string? tempScriptPath = null;
 
             try
             {
-                // Önce kapsamlı cleanup yap
-                await ComprehensiveCleanupAsync(scratchPath);
+                // Yalnızca bu scratch dizininde önceki Tiny11 çalıştırmalarından kalan
+                // sahipliği doğrulanmış kaynakları temizle.
+                await ComprehensiveCleanupAsync(_currentScratchPath);
+                await SaveCurrentRunStateAsync();
 
                 OutputReceived?.Invoke(GetLocalizedString("LogTiny11Starting"));
                 OutputReceived?.Invoke(string.Format(GetLocalizedString("LogIsoPath"), isoPath));
@@ -205,7 +233,7 @@ namespace tiny11_ui.Services
                 var script = GenerateTiny11Script(isoPath, scratchPath, outputPath, editionIndex, options, buildTimestamp);
 
                 // Scripti geçici dosyaya yaz
-                var tempScriptPath = Path.Combine(Path.GetTempPath(), $"tiny11_custom_{DateTime.Now:yyyyMMddHHmmss}.ps1");
+                tempScriptPath = Path.Combine(Path.GetTempPath(), $"tiny11_custom_{DateTime.Now:yyyyMMddHHmmss}_{_currentRunId}.ps1");
                 await File.WriteAllTextAsync(tempScriptPath, script, Encoding.UTF8);
 
                 OutputReceived?.Invoke(string.Format(GetLocalizedString("LogScriptCreated"), tempScriptPath));
@@ -214,29 +242,38 @@ namespace tiny11_ui.Services
                 // Scripti çalıştır (iptal kontrolü ile)
                 var success = await RunPowerShellScriptFileAsync(tempScriptPath, _cancellationTokenSource.Token);
 
-                // Geçici scripti temizle
-                try
+                if (success)
                 {
-                    if (File.Exists(tempScriptPath))
-                        File.Delete(tempScriptPath);
+                    DeleteCurrentRunState();
                 }
-                catch { /* Ignore cleanup errors */ }
+                else
+                {
+                    await CleanupAfterCancelAsync();
+                }
 
                 return success;
             }
             catch (OperationCanceledException)
             {
                 OutputReceived?.Invoke("\n" + GetLocalizedString("LogCancelByUser") + "\n");
+                await CleanupAfterCancelAsync();
                 return false;
             }
             catch (Exception ex)
             {
                 ErrorReceived?.Invoke(string.Format(GetLocalizedString("LogError"), ex.Message));
-                await CleanupEnvironmentAsync();
+                await CleanupAfterCancelAsync();
                 return false;
             }
             finally
             {
+                try
+                {
+                    if (!string.IsNullOrEmpty(tempScriptPath) && File.Exists(tempScriptPath))
+                        File.Delete(tempScriptPath);
+                }
+                catch { /* Ignore cleanup errors */ }
+
                 _isRunning = false;
                 _currentProcess = null;
                 _cancellationTokenSource?.Dispose();
@@ -265,7 +302,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"# Generated by tiny11-ui");
             sb.AppendLine(@"# " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             sb.AppendLine();
-            sb.AppendLine(@"$ErrorActionPreference = 'Continue'");
+            sb.AppendLine(@"$ErrorActionPreference = 'Stop'");
             sb.AppendLine();
 
             // Değişkenler
@@ -273,6 +310,19 @@ namespace tiny11_ui.Services
             sb.AppendLine($@"$scratchPath = '{scratchPath.Replace("'", "''")}'");
             sb.AppendLine($@"$outputPath = '{outputPath.Replace("'", "''")}'");
             sb.AppendLine($@"$editionIndex = {editionIndex}");
+            sb.AppendLine($@"$temporaryOutputPath = $outputPath + '.partial.{buildTimestamp}'");
+            sb.AppendLine(@"$backupOutputPath = $outputPath + '.backup'");
+            sb.AppendLine(@"$scriptExitCode = 0");
+            sb.AppendLine(@"$buildSucceeded = $false");
+            sb.AppendLine(@"$isoMounted = $false");
+            sb.AppendLine(@"$wimMounted = $false");
+            sb.AppendLine(@"$softwareHiveLoaded = $false");
+            sb.AppendLine(@"$systemHiveLoaded = $false");
+            sb.AppendLine(@"$ntuserHiveLoaded = $false");
+            sb.AppendLine();
+            sb.AppendLine(@"function Assert-NativeSuccess([string]$step) {");
+            sb.AppendLine(@"    if ($LASTEXITCODE -ne 0) { throw ""$step failed with exit code $LASTEXITCODE"" }");
+            sb.AppendLine(@"}");
             sb.AppendLine();
 
             // En güncel DISM'i bul - ADK'daki DISM, host işletim sisteminden daha yeni olabilir.
@@ -307,10 +357,11 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"$mountDir = Join-Path $scratchPath ""tiny11_mount_$timestamp""");
             sb.AppendLine(@"$isoDir = Join-Path $scratchPath ""tiny11_iso_$timestamp""");
             sb.AppendLine();
+            sb.AppendLine(@"try {");
 
-            // Eski mount'ları temizlemeye çalış (arka planda, hata olursa devam et)
-            sb.AppendLine(@"# Eski mount'ları temizlemeye çalış (başarısız olursa sorun değil - yeni dizin kullanıyoruz)");
-            sb.AppendLine(@"Write-Host 'Checking for stale mounts...' -ForegroundColor Yellow");
+            // Bu çalışmanın kullanacağı adlandırılmış kaynakları hazırla. Global DISM cleanup
+            // burada çalıştırılmaz; eski run'lar C# tarafındaki sahiplik tabanlı recovery ile temizlenir.
+            sb.AppendLine(@"# Prepare Tiny11-owned resources");
             sb.AppendLine();
             sb.AppendLine(@"# Registry hive'larını unload et");
             sb.AppendLine(@"reg unload 'HKLM\OFFLINE_SOFTWARE' 2>$null");
@@ -318,12 +369,6 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"reg unload 'HKU\OFFLINE_NTUSER' 2>$null");
             sb.AppendLine(@"[gc]::Collect()");
             sb.AppendLine();
-            sb.AppendLine(@"# DISM cleanup (arka planda)");
-            sb.AppendLine(@"$dismCleanup = Start-Job -ScriptBlock { dism /cleanup-wim 2>$null }");
-            sb.AppendLine(@"Wait-Job $dismCleanup -Timeout 30 | Out-Null");
-            sb.AppendLine(@"Remove-Job $dismCleanup -Force -ErrorAction SilentlyContinue");
-            sb.AppendLine();
-            
             sb.AppendLine(@"# ISO'yu unmount et (önceden mount edilmişse)");
             sb.AppendLine(@"try {");
             sb.AppendLine(@"    Dismount-DiskImage -ImagePath $isoPath -ErrorAction SilentlyContinue");
@@ -345,6 +390,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"Write-Host 'Mounting ISO...' -ForegroundColor Cyan");
             sb.AppendLine(@"$driveBefore = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'CDRom' } | ForEach-Object { $_.Name }");
             sb.AppendLine(@"$mountResult = Mount-DiskImage -ImagePath $isoPath -PassThru");
+            sb.AppendLine(@"$isoMounted = $true");
             sb.AppendLine(@"$driveLetter = $null");
             sb.AppendLine(@"for ($i = 0; $i -lt 20; $i++) {");
             sb.AppendLine(@"    $candidate = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'CDRom' -and $_.IsReady -and $driveBefore -notcontains $_.Name } | Select-Object -First 1");
@@ -377,7 +423,11 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"if (Test-Path $esdPath) {");
             sb.AppendLine(@"    Write-Host 'Converting ESD -> WIM...' -ForegroundColor Cyan");
             sb.AppendLine(@"    & $dismPath /export-image /sourceimagefile:$esdPath /sourceindex:$editionIndex /destinationimagefile:$wimPath /compress:max");
+            sb.AppendLine(@"    Assert-NativeSuccess 'ESD to WIM export'");
+            sb.AppendLine(@"    if (!(Test-Path $wimPath)) { throw 'ESD export did not create install.wim' }");
             sb.AppendLine(@"    Remove-Item $esdPath -Force");
+            sb.AppendLine(@"    # Export creates a single-image WIM, so its index is always 1.");
+            sb.AppendLine(@"    $editionIndex = 1");
             sb.AppendLine(@"} elseif (!(Test-Path $wimPath)) {");
             sb.AppendLine(@"    throw 'install.wim or install.esd not found!'");
             sb.AppendLine(@"}");
@@ -400,8 +450,8 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"    Write-Host ''");
             sb.AppendLine(@"    Write-Host 'Attempting recovery...' -ForegroundColor Yellow");
             sb.AppendLine(@"    ");
-            sb.AppendLine(@"    # Cleanup-wim dene");
-            sb.AppendLine(@"    & $dismPath /cleanup-wim 2>$null");
+            sb.AppendLine(@"    # Yalnızca bu çalışmanın mount dizinini discard etmeyi dene");
+            sb.AppendLine(@"    & $dismPath /unmount-wim /mountdir:$mountDir /discard 2>$null | Out-Null");
             sb.AppendLine(@"    Start-Sleep -Seconds 3");
             sb.AppendLine(@"    ");
             sb.AppendLine(@"    # Yeni dizin ile tekrar dene");
@@ -417,6 +467,7 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"        throw 'Failed to mount WIM image'");
             sb.AppendLine(@"    }");
             sb.AppendLine(@"}");
+            sb.AppendLine(@"$wimMounted = $true");
             sb.AppendLine(@"Write-Host 'Image mounted successfully' -ForegroundColor Green");
             sb.AppendLine();
 
@@ -499,8 +550,14 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"# Hive'ları yükle");
             sb.AppendLine(@"Write-Host '   Loading registry hives...' -ForegroundColor Gray");
             sb.AppendLine(@"$regLoadSw = Start-Process -FilePath 'reg.exe' -ArgumentList ""load `""HKLM\OFFLINE_SOFTWARE`"" `""$softwareHive`"""" -NoNewWindow -Wait -PassThru");
+            sb.AppendLine(@"if ($regLoadSw.ExitCode -ne 0) { throw ""Failed to load SOFTWARE registry hive (exit $($regLoadSw.ExitCode))"" }");
+            sb.AppendLine(@"$softwareHiveLoaded = $true");
             sb.AppendLine(@"$regLoadSys = Start-Process -FilePath 'reg.exe' -ArgumentList ""load `""HKLM\OFFLINE_SYSTEM`"" `""$systemHive`"""" -NoNewWindow -Wait -PassThru");
+            sb.AppendLine(@"if ($regLoadSys.ExitCode -ne 0) { throw ""Failed to load SYSTEM registry hive (exit $($regLoadSys.ExitCode))"" }");
+            sb.AppendLine(@"$systemHiveLoaded = $true");
             sb.AppendLine(@"$regLoadNt = Start-Process -FilePath 'reg.exe' -ArgumentList ""load `""HKU\OFFLINE_NTUSER`"" `""$ntuserHive`"""" -NoNewWindow -Wait -PassThru");
+            sb.AppendLine(@"if ($regLoadNt.ExitCode -ne 0) { throw ""Failed to load NTUSER registry hive (exit $($regLoadNt.ExitCode))"" }");
+            sb.AppendLine(@"$ntuserHiveLoaded = $true");
             sb.AppendLine(@"Start-Sleep -Seconds 1");
             sb.AppendLine();
 
@@ -609,6 +666,7 @@ namespace tiny11_ui.Services
             {
                 sb.AppendLine(@"Write-Host '   Removing Hyper-V...' -ForegroundColor Yellow");
                 sb.AppendLine(@"& $dismPath /image:$mountDir /Disable-Feature /FeatureName:Microsoft-Hyper-V-All /Remove /NoRestart 2>$null | Out-Null");
+                sb.AppendLine(@"Assert-NativeSuccess 'Hyper-V removal'");
                 sb.AppendLine();
             }
 
@@ -619,11 +677,13 @@ namespace tiny11_ui.Services
                 // Bunun yerine dism.exe konsol çıktısını parse eden fonksiyonlar kullanılır.
                 sb.AppendLine(@"function Remove-MatchingCapabilities($Patterns) {");
                 sb.AppendLine(@"    $capOutput = & $dismPath /Image:$mountDir /Get-Capabilities");
+                sb.AppendLine(@"    Assert-NativeSuccess 'Capability inventory'");
                 sb.AppendLine(@"    $names = $capOutput | Select-String 'Capability Identity\s*:\s*(.+)' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }");
                 sb.AppendLine(@"    foreach ($name in $names) {");
                 sb.AppendLine(@"        foreach ($pattern in $Patterns) {");
                 sb.AppendLine(@"            if ($name -like $pattern) {");
                 sb.AppendLine(@"                & $dismPath /Image:$mountDir /Remove-Capability /CapabilityName:$name 2>$null | Out-Null");
+                sb.AppendLine(@"                Assert-NativeSuccess ""Capability removal: $name""");
                 sb.AppendLine(@"                break");
                 sb.AppendLine(@"            }");
                 sb.AppendLine(@"        }");
@@ -631,6 +691,7 @@ namespace tiny11_ui.Services
                 sb.AppendLine(@"}");
                 sb.AppendLine(@"function Remove-MatchingDrivers($ClassNames) {");
                 sb.AppendLine(@"    $driverOutput = & $dismPath /Image:$mountDir /Get-Drivers");
+                sb.AppendLine(@"    Assert-NativeSuccess 'Driver inventory'");
                 sb.AppendLine(@"    $driverText = $driverOutput -join ""`n""");
                 sb.AppendLine(@"    $blocks = $driverText -split '(?=Published Name)'");
                 sb.AppendLine(@"    foreach ($block in $blocks) {");
@@ -638,6 +699,7 @@ namespace tiny11_ui.Services
                 sb.AppendLine(@"            $pubName = $Matches[1]");
                 sb.AppendLine(@"            if ($block -match 'Class Name\s*:\s*(\S+)' -and $ClassNames -contains $Matches[1]) {");
                 sb.AppendLine(@"                & $dismPath /Image:$mountDir /Remove-Driver /Driver:$pubName 2>$null | Out-Null");
+                sb.AppendLine(@"                Assert-NativeSuccess ""Driver removal: $pubName""");
                 sb.AppendLine(@"            }");
                 sb.AppendLine(@"        }");
                 sb.AppendLine(@"    }");
@@ -648,21 +710,21 @@ namespace tiny11_ui.Services
             if (options.RemoveRecall)
             {
                 sb.AppendLine(@"Write-Host '   Removing Windows Recall...' -ForegroundColor Yellow");
-                sb.AppendLine(@"try { Remove-MatchingCapabilities -Patterns @('Recall*') } catch { }");
+                sb.AppendLine(@"Remove-MatchingCapabilities -Patterns @('Recall*')");
                 sb.AppendLine();
             }
 
             if (options.RemoveInputComponents)
             {
                 sb.AppendLine(@"Write-Host '   Removing Speech/OCR/Handwriting components...' -ForegroundColor Yellow");
-                sb.AppendLine(@"try { Remove-MatchingCapabilities -Patterns @('Language.Speech*', 'Language.OCR*', 'Language.Handwriting*', 'Language.TextToSpeech*') } catch { }");
+                sb.AppendLine(@"Remove-MatchingCapabilities -Patterns @('Language.Speech*', 'Language.OCR*', 'Language.Handwriting*', 'Language.TextToSpeech*')");
                 sb.AppendLine();
             }
 
             if (options.CleanupDriverStore)
             {
                 sb.AppendLine(@"Write-Host '   Removing unused driver packages (printer/scanner/modem/Xbox)...' -ForegroundColor Yellow");
-                sb.AppendLine(@"try { Remove-MatchingDrivers -ClassNames @('Printer', 'PrinterQueue', 'Image', 'Modem', 'XboxComposite') } catch { }");
+                sb.AppendLine(@"Remove-MatchingDrivers -ClassNames @('Printer', 'PrinterQueue', 'Image', 'Modem', 'XboxComposite')");
                 sb.AppendLine();
             }
 
@@ -670,6 +732,7 @@ namespace tiny11_ui.Services
             {
                 sb.AppendLine(@"Write-Host '   Cleaning up component store (WinSxS, this can take several minutes)...' -ForegroundColor Yellow");
                 sb.AppendLine(@"& $dismPath /image:$mountDir /Cleanup-Image /StartComponentCleanup /ResetBase");
+                sb.AppendLine(@"Assert-NativeSuccess 'Component store cleanup'");
                 sb.AppendLine();
             }
 
@@ -679,8 +742,14 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"[gc]::Collect()");
             sb.AppendLine(@"Start-Sleep -Seconds 2");
             sb.AppendLine(@"reg unload ""HKLM\OFFLINE_SOFTWARE"" 2>$null");
+            sb.AppendLine(@"Assert-NativeSuccess 'SOFTWARE registry hive unload'");
+            sb.AppendLine(@"$softwareHiveLoaded = $false");
             sb.AppendLine(@"reg unload ""HKLM\OFFLINE_SYSTEM"" 2>$null");
+            sb.AppendLine(@"Assert-NativeSuccess 'SYSTEM registry hive unload'");
+            sb.AppendLine(@"$systemHiveLoaded = $false");
             sb.AppendLine(@"reg unload ""HKU\OFFLINE_NTUSER"" 2>$null");
+            sb.AppendLine(@"Assert-NativeSuccess 'NTUSER registry hive unload'");
+            sb.AppendLine(@"$ntuserHiveLoaded = $false");
             sb.AppendLine();
 
             // BypassNRO script oluştur (MS hesabı bypass için autounattend)
@@ -702,12 +771,15 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"# Image'ı kaydet ve unmount et");
             sb.AppendLine(@"Write-Host 'Saving changes...' -ForegroundColor Cyan");
             sb.AppendLine(@"& $dismPath /unmount-wim /mountdir:$mountDir /commit");
+            sb.AppendLine(@"Assert-NativeSuccess 'WIM commit'");
+            sb.AppendLine(@"$wimMounted = $false");
             sb.AppendLine();
 
             // ISO unmount
             sb.AppendLine(@"# Kaynak ISO'yu unmount et");
             sb.AppendLine(@"Write-Host 'Unmounting source ISO...' -ForegroundColor Cyan");
-            sb.AppendLine(@"Dismount-DiskImage -ImagePath $isoPath -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"Dismount-DiskImage -ImagePath $isoPath -ErrorAction Stop");
+            sb.AppendLine(@"$isoMounted = $false");
             sb.AppendLine();
 
             // Görüntüyü sıkıştır (Recovery compression) - boyutu belirgin şekilde azaltır
@@ -718,14 +790,12 @@ namespace tiny11_ui.Services
                 sb.AppendLine(@"Write-Host 'Compressing final image (recovery compression)...' -ForegroundColor Cyan");
                 sb.AppendLine(@"$compressedWimPath = Join-Path $isoDir 'sources\install_compressed.wim'");
                 sb.AppendLine(@"& $dismPath /Export-Image /SourceImageFile:$wimPath /SourceIndex:$editionIndex /DestinationImageFile:$compressedWimPath /Compress:recovery");
-                sb.AppendLine(@"if ($LASTEXITCODE -eq 0 -and (Test-Path $compressedWimPath)) {");
-                sb.AppendLine(@"    Remove-Item $wimPath -Force");
-                sb.AppendLine(@"    Rename-Item $compressedWimPath 'install.wim'");
-                sb.AppendLine(@"    Write-Host '   Image compressed successfully' -ForegroundColor Green");
-                sb.AppendLine(@"} else {");
-                sb.AppendLine(@"    Write-Host '   Compression failed, keeping uncompressed image' -ForegroundColor Yellow");
-                sb.AppendLine(@"    Remove-Item $compressedWimPath -Force -ErrorAction SilentlyContinue");
-                sb.AppendLine(@"}");
+                sb.AppendLine(@"Assert-NativeSuccess 'Final WIM compression'");
+                sb.AppendLine(@"if (!(Test-Path $compressedWimPath) -or (Get-Item $compressedWimPath).Length -le 0) { throw 'Final WIM compression produced no usable output' }");
+                sb.AppendLine(@"Remove-Item $wimPath -Force");
+                sb.AppendLine(@"Rename-Item $compressedWimPath 'install.wim'");
+                sb.AppendLine(@"$editionIndex = 1");
+                sb.AppendLine(@"Write-Host '   Image compressed successfully' -ForegroundColor Green");
                 sb.AppendLine();
             }
 
@@ -762,33 +832,52 @@ namespace tiny11_ui.Services
             sb.AppendLine(@"if ($oscdimgPath -eq '') {");
             sb.AppendLine(@"    Write-Host 'oscdimg.exe not found! Please install Windows ADK or add oscdimg.exe to your PATH.' -ForegroundColor Red");
             sb.AppendLine(@"    Write-Host '   https://docs.microsoft.com/en-us/windows-hardware/get-started/adk-install' -ForegroundColor Yellow");
-            sb.AppendLine(@"    exit 1");
+            sb.AppendLine(@"    throw 'oscdimg.exe was not found'");
             sb.AppendLine(@"}");
             sb.AppendLine();
             sb.AppendLine(@"Write-Host ""oscdimg found: $oscdimgPath"" -ForegroundColor Green");
             sb.AppendLine();
             sb.AppendLine(@"$bootData = '2#p0,e,b""' + $isoDir + '\boot\etfsboot.com""#pEF,e,b""' + $isoDir + '\efi\microsoft\boot\efisys.bin""'");
-            sb.AppendLine(@"& $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData -l""Tiny11"" $isoDir $outputPath");
+            sb.AppendLine(@"Remove-Item $temporaryOutputPath -Force -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"& $oscdimgPath -m -o -u2 -udfver102 -bootdata:$bootData -l""Tiny11"" $isoDir $temporaryOutputPath");
+            sb.AppendLine(@"Assert-NativeSuccess 'ISO creation'");
+            sb.AppendLine(@"if (!(Test-Path $temporaryOutputPath) -or (Get-Item $temporaryOutputPath).Length -le 0) { throw 'ISO creation produced no usable output' }");
             sb.AppendLine();
 
-            // Temizlik
-            sb.AppendLine(@"# Temizlik");
-            sb.AppendLine(@"Write-Host 'Cleaning up...' -ForegroundColor Cyan");
-            sb.AppendLine(@"Remove-Item -Path $workDir -Recurse -Force -ErrorAction SilentlyContinue");
-            sb.AppendLine(@"Remove-Item -Path $mountDir -Recurse -Force -ErrorAction SilentlyContinue");
-            sb.AppendLine(@"Remove-Item -Path $isoDir -Recurse -Force -ErrorAction SilentlyContinue");
+            // Başarılı çıktı aynı klasörde geçici dosyaya yazılır ve atomik olarak hedefe alınır.
+            // Böylece önceki bir ISO, başarısız yeni çalışmayı başarılı gibi gösteremez.
+            sb.AppendLine(@"if (Test-Path $outputPath) {");
+            sb.AppendLine(@"    Remove-Item $backupOutputPath -Force -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"    [System.IO.File]::Replace($temporaryOutputPath, $outputPath, $backupOutputPath, $true)");
+            sb.AppendLine(@"    Remove-Item $backupOutputPath -Force -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"} else {");
+            sb.AppendLine(@"    [System.IO.File]::Move($temporaryOutputPath, $outputPath)");
+            sb.AppendLine(@"}");
+            sb.AppendLine(@"$buildSucceeded = $true");
             sb.AppendLine();
 
             // Sonuç
-            sb.AppendLine(@"if (Test-Path $outputPath) {");
-            sb.AppendLine(@"    $fileSize = (Get-Item $outputPath).Length / 1GB");
-            sb.AppendLine(@"    Write-Host ""Tiny11 ISO created successfully!"" -ForegroundColor Green");
-            sb.AppendLine(@"    Write-Host ""Location: $outputPath"" -ForegroundColor Green");
-            sb.AppendLine(@"    Write-Host ""Size: $([math]::Round($fileSize, 2)) GB"" -ForegroundColor Green");
-            sb.AppendLine(@"} else {");
-            sb.AppendLine(@"    Write-Host ""ISO creation failed!"" -ForegroundColor Red");
-            sb.AppendLine(@"    exit 1");
+            sb.AppendLine(@"$fileSize = (Get-Item $outputPath).Length / 1GB");
+            sb.AppendLine(@"Write-Host ""Tiny11 ISO created successfully!"" -ForegroundColor Green");
+            sb.AppendLine(@"Write-Host ""Location: $outputPath"" -ForegroundColor Green");
+            sb.AppendLine(@"Write-Host ""Size: $([math]::Round($fileSize, 2)) GB"" -ForegroundColor Green");
+            sb.AppendLine(@"} catch {");
+            sb.AppendLine(@"    [Console]::Error.WriteLine(""Tiny11 build failed: $($_.Exception.Message)"")");
+            sb.AppendLine(@"    $scriptExitCode = 1");
+            sb.AppendLine(@"} finally {");
+            sb.AppendLine(@"    Write-Host 'Cleaning up this build...' -ForegroundColor Cyan");
+            sb.AppendLine(@"    if ($ntuserHiveLoaded) { reg unload ""HKU\OFFLINE_NTUSER"" 2>$null | Out-Null }");
+            sb.AppendLine(@"    if ($systemHiveLoaded) { reg unload ""HKLM\OFFLINE_SYSTEM"" 2>$null | Out-Null }");
+            sb.AppendLine(@"    if ($softwareHiveLoaded) { reg unload ""HKLM\OFFLINE_SOFTWARE"" 2>$null | Out-Null }");
+            sb.AppendLine(@"    [gc]::Collect()");
+            sb.AppendLine(@"    if ($wimMounted -and (Test-Path $mountDir)) { & $dismPath /unmount-wim /mountdir:$mountDir /discard 2>$null | Out-Null }");
+            sb.AppendLine(@"    if ($isoMounted) { Dismount-DiskImage -ImagePath $isoPath -ErrorAction SilentlyContinue }");
+            sb.AppendLine(@"    Remove-Item $temporaryOutputPath -Force -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"    Remove-Item -Path $workDir -Recurse -Force -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"    Remove-Item -Path $mountDir -Recurse -Force -ErrorAction SilentlyContinue");
+            sb.AppendLine(@"    Remove-Item -Path $isoDir -Recurse -Force -ErrorAction SilentlyContinue");
             sb.AppendLine(@"}");
+            sb.AppendLine(@"exit $scriptExitCode");
 
             return sb.ToString();
         }
@@ -856,6 +945,7 @@ namespace tiny11_ui.Services
                 };
 
                 _currentProcess.Start();
+                await SaveCurrentRunStateAsync(_currentProcess);
                 _currentProcess.BeginOutputReadLine();
                 _currentProcess.BeginErrorReadLine();
 
@@ -1292,50 +1382,9 @@ namespace tiny11_ui.Services
 
         private async Task CleanupEnvironmentAsync()
         {
-            try
-            {
-                OutputReceived?.Invoke(GetLocalizedString("LogSystemCleanupInProgress"));
-                
-                // DISM cleanup
-                var dismProcess = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "dism",
-                        Arguments = "/cleanup-wim",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                };
-                
-                dismProcess.Start();
-                await dismProcess.WaitForExitAsync();
-                
-                // Mount edilmiş image'ları temizle
-                var mountProcess = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "powershell.exe",
-                        Arguments = "-Command \"Get-WindowsImage -Mounted | ForEach-Object { Dismount-WindowsImage -Path $_.Path -Discard }\"",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                };
-                
-                mountProcess.Start();
-                await mountProcess.WaitForExitAsync();
-                
-                OutputReceived?.Invoke(GetLocalizedString("LogSystemCleanupComplete"));
-            }
-            catch (Exception ex)
-            {
-                ErrorReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupError"), ex.Message));
-            }
+            // Eski uygulama akışları da yalnızca bu instance'ın izlediği kaynakları temizler.
+            // Sistemdeki tüm WIM mount'larını discard eden global cleanup bilinçli olarak yoktur.
+            await CleanupAfterCancelAsync();
         }
 
         private async Task ComprehensiveCleanupAsync(string scratchPath)
@@ -1344,53 +1393,344 @@ namespace tiny11_ui.Services
             {
                 OutputReceived?.Invoke(GetLocalizedString("LogComprehensiveCleanup"));
 
-                // 1. Mevcut PowerShell processlerini sonlandır
-                var processes = Process.GetProcessesByName("powershell");
-                foreach (var proc in processes.Where(p => p.Id != Environment.ProcessId))
-                {
-                    try
-                    {
-                        if (proc.MainWindowTitle.Contains("tiny11") ||
-                            proc.ProcessName.Contains("powershell"))
-                        {
-                            proc.Kill();
-                            await proc.WaitForExitAsync();
-                        }
-                    }
-                    catch { /* Ignore */ }
-                }
+                Directory.CreateDirectory(scratchPath);
 
-                // 2. Mount edilmiş image'ları temizle
-                await CleanupEnvironmentAsync();
+                // Önceki sürüm veya çöken bir instance tarafından bırakılan state kayıtlarından
+                // yalnızca kaydı doğrulanan PowerShell process'ini ve Tiny11 dizinlerini kurtar.
+                var activeRunDirectories = await RecoverTrackedRunsAsync(scratchPath);
 
-                // 3. Dosya kilitleri için bekle
-                await Task.Delay(2000);
-
-                // 4. Çalışma dizininde önceki (yarım kalmış/çökmüş) çalışmalardan kalan
-                // zaman damgalı dizinleri temizle
-                if (Directory.Exists(scratchPath))
-                {
-                    foreach (var pattern in new[] { "tiny11_work_*", "tiny11_mount_*", "tiny11_iso_*" })
-                    {
-                        foreach (var path in Directory.GetDirectories(scratchPath, pattern))
-                        {
-                            try
-                            {
-                                Directory.Delete(path, true);
-                            }
-                            catch (Exception ex)
-                            {
-                                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
-                            }
-                        }
-                    }
-                }
+                // State sistemi eklenmeden önceki sürümlerden kalan dizinler için geriye uyumlu
+                // kurtarma: yalnızca seçilen scratch kökündeki tiny11_* dizinlerine dokunulur.
+                await RecoverLegacyScratchDirectoriesAsync(scratchPath, activeRunDirectories);
 
                 OutputReceived?.Invoke(GetLocalizedString("LogComprehensiveCleanupComplete"));
             }
             catch (Exception ex)
             {
                 ErrorReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupError"), ex.Message));
+            }
+        }
+
+        private async Task SaveCurrentRunStateAsync(Process? powerShellProcess = null)
+        {
+            if (string.IsNullOrEmpty(_currentStatePath) ||
+                string.IsNullOrEmpty(_currentScratchPath) ||
+                string.IsNullOrEmpty(_currentRunId))
+            {
+                return;
+            }
+
+            try
+            {
+                int? processId = null;
+                DateTime? processStartTimeUtc = null;
+
+                if (powerShellProcess != null)
+                {
+                    processId = powerShellProcess.Id;
+                    processStartTimeUtc = powerShellProcess.StartTime.ToUniversalTime();
+                }
+
+                var state = new BuildRunState
+                {
+                    RunId = _currentRunId,
+                    ScratchPath = _currentScratchPath,
+                    WorkDirectory = _currentWorkDir,
+                    MountDirectory = _currentMountDir,
+                    RetryMountDirectory = _currentMountDirRetry,
+                    IsoDirectory = _currentIsoDir,
+                    IsoPath = _currentIsoPath,
+                    OwnerProcessId = Environment.ProcessId,
+                    OwnerProcessStartTimeUtc = Process.GetCurrentProcess().StartTime.ToUniversalTime(),
+                    PowerShellProcessId = processId,
+                    PowerShellProcessStartTimeUtc = processStartTimeUtc
+                };
+
+                Directory.CreateDirectory(_currentScratchPath);
+                var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+                var temporaryStatePath = _currentStatePath + ".tmp";
+                await File.WriteAllTextAsync(temporaryStatePath, json, Encoding.UTF8);
+                File.Move(temporaryStatePath, _currentStatePath, true);
+            }
+            catch (Exception ex)
+            {
+                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"),
+                    $"Build state could not be saved: {ex.Message}"));
+            }
+        }
+
+        private void DeleteCurrentRunState()
+        {
+            if (string.IsNullOrEmpty(_currentStatePath)) return;
+
+            try
+            {
+                if (File.Exists(_currentStatePath)) File.Delete(_currentStatePath);
+                if (File.Exists(_currentStatePath + ".tmp")) File.Delete(_currentStatePath + ".tmp");
+            }
+            catch (Exception ex)
+            {
+                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
+            }
+        }
+
+        private void DeleteCurrentRunStateIfResourcesReleased()
+        {
+            var trackedDirectories = new[]
+            {
+                _currentWorkDir,
+                _currentMountDir,
+                _currentMountDirRetry,
+                _currentIsoDir
+            };
+
+            if (trackedDirectories.Any(directory =>
+                    !string.IsNullOrEmpty(directory) && Directory.Exists(directory)))
+            {
+                return;
+            }
+
+            if (_currentProcess != null)
+            {
+                try
+                {
+                    if (!_currentProcess.HasExited) return;
+                }
+                catch
+                {
+                    return;
+                }
+            }
+
+            DeleteCurrentRunState();
+        }
+
+        private async Task<HashSet<string>> RecoverTrackedRunsAsync(string scratchPath)
+        {
+            var activeRunDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var statePath in Directory.GetFiles(scratchPath, ".tiny11-run-*.json"))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(statePath);
+                    var state = JsonSerializer.Deserialize<BuildRunState>(json);
+                    if (state == null || state.SchemaVersion != 1 ||
+                        !PathsEqual(state.ScratchPath, scratchPath))
+                    {
+                        OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"),
+                            $"Ignored invalid build state: {Path.GetFileName(statePath)}"));
+                        continue;
+                    }
+
+                    var trackedDirectories = new[]
+                    {
+                        state.WorkDirectory,
+                        state.MountDirectory,
+                        state.RetryMountDirectory,
+                        state.IsoDirectory
+                    };
+
+                    if (IsProcessInstanceAlive(state.OwnerProcessId, state.OwnerProcessStartTimeUtc))
+                    {
+                        foreach (var directory in trackedDirectories)
+                        {
+                            if (IsOwnedScratchDirectory(directory, scratchPath,
+                                    "tiny11_work_", "tiny11_mount_", "tiny11_iso_"))
+                            {
+                                activeRunDirectories.Add(Path.GetFullPath(directory!));
+                            }
+                        }
+
+                        OutputReceived?.Invoke($"Active Tiny11 run preserved: {state.RunId}");
+                        continue;
+                    }
+
+                    await StopTrackedPowerShellProcessAsync(state);
+
+                    foreach (var mountDirectory in new[] { state.MountDirectory, state.RetryMountDirectory })
+                    {
+                        if (IsOwnedScratchDirectory(mountDirectory, scratchPath, "tiny11_mount_"))
+                        {
+                            await DismountOwnedWimAsync(mountDirectory!);
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(state.IsoPath))
+                    {
+                        await DismountTrackedIsoAsync(state.IsoPath);
+                    }
+
+                    foreach (var directory in trackedDirectories)
+                    {
+                        if (IsOwnedScratchDirectory(directory, scratchPath,
+                                "tiny11_work_", "tiny11_mount_", "tiny11_iso_"))
+                        {
+                            TryDeleteOwnedDirectory(directory!);
+                        }
+                    }
+
+                    var cleanupCompleted = trackedDirectories.All(directory =>
+                        string.IsNullOrEmpty(directory) || !Directory.Exists(directory));
+                    if (cleanupCompleted)
+                    {
+                        File.Delete(statePath);
+                    }
+                    else
+                    {
+                        OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"),
+                            $"Build state retained for another recovery attempt: {Path.GetFileName(statePath)}"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
+                }
+            }
+
+            return activeRunDirectories;
+        }
+
+        private async Task RecoverLegacyScratchDirectoriesAsync(string scratchPath, HashSet<string> activeRunDirectories)
+        {
+            foreach (var mountDirectory in Directory.GetDirectories(scratchPath, "tiny11_mount_*"))
+            {
+                if (!activeRunDirectories.Contains(Path.GetFullPath(mountDirectory)) &&
+                    IsOwnedScratchDirectory(mountDirectory, scratchPath, "tiny11_mount_"))
+                {
+                    await DismountOwnedWimAsync(mountDirectory);
+                }
+            }
+
+            foreach (var pattern in new[] { "tiny11_work_*", "tiny11_mount_*", "tiny11_iso_*" })
+            {
+                foreach (var directory in Directory.GetDirectories(scratchPath, pattern))
+                {
+                    if (!activeRunDirectories.Contains(Path.GetFullPath(directory)) &&
+                        IsOwnedScratchDirectory(directory, scratchPath,
+                            "tiny11_work_", "tiny11_mount_", "tiny11_iso_"))
+                    {
+                        TryDeleteOwnedDirectory(directory);
+                    }
+                }
+            }
+        }
+
+        private static bool IsProcessInstanceAlive(int processId, DateTime processStartTimeUtc)
+        {
+            if (processId <= 0 || processStartTimeUtc == default) return false;
+
+            try
+            {
+                using var process = Process.GetProcessById(processId);
+                return !process.HasExited &&
+                       Math.Abs((process.StartTime.ToUniversalTime() - processStartTimeUtc).TotalSeconds) <= 1;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task StopTrackedPowerShellProcessAsync(BuildRunState state)
+        {
+            if (!state.PowerShellProcessId.HasValue || !state.PowerShellProcessStartTimeUtc.HasValue)
+                return;
+
+            try
+            {
+                using var process = Process.GetProcessById(state.PowerShellProcessId.Value);
+                if (process.HasExited ||
+                    !process.ProcessName.Equals("powershell", StringComparison.OrdinalIgnoreCase) ||
+                    Math.Abs((process.StartTime.ToUniversalTime() - state.PowerShellProcessStartTimeUtc.Value).TotalSeconds) > 1)
+                {
+                    return;
+                }
+
+                OutputReceived?.Invoke($"Stopping stale Tiny11 PowerShell process: {process.Id}");
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync();
+            }
+            catch (ArgumentException)
+            {
+                // Process artık mevcut değil.
+            }
+            catch (Exception ex)
+            {
+                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
+            }
+        }
+
+        private async Task DismountOwnedWimAsync(string mountDirectory)
+        {
+            if (!Directory.Exists(mountDirectory)) return;
+
+            OutputReceived?.Invoke($"Discarding stale Tiny11 mount: {mountDirectory}");
+            await RunCleanupCommandAsync($"dism /unmount-wim /mountdir:\"{mountDirectory}\" /discard");
+        }
+
+        private async Task DismountTrackedIsoAsync(string isoPath)
+        {
+            try
+            {
+                var escapedIsoPath = isoPath.Replace("'", "''");
+                await RunPowerShellCommandAsync(
+                    $"Dismount-DiskImage -ImagePath '{escapedIsoPath}' -ErrorAction SilentlyContinue");
+            }
+            catch (Exception ex)
+            {
+                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
+            }
+        }
+
+        private static bool PathsEqual(string firstPath, string secondPath)
+        {
+            try
+            {
+                return string.Equals(
+                    Path.GetFullPath(firstPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    Path.GetFullPath(secondPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsOwnedScratchDirectory(string? candidatePath, string scratchPath, params string[] allowedPrefixes)
+        {
+            if (string.IsNullOrWhiteSpace(candidatePath)) return false;
+
+            try
+            {
+                var fullCandidatePath = Path.GetFullPath(candidatePath)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var fullScratchPath = Path.GetFullPath(scratchPath)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var parentPath = Path.GetDirectoryName(fullCandidatePath);
+                var directoryName = Path.GetFileName(fullCandidatePath);
+
+                return parentPath != null &&
+                       string.Equals(parentPath, fullScratchPath, StringComparison.OrdinalIgnoreCase) &&
+                       allowedPrefixes.Any(prefix =>
+                           directoryName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void TryDeleteOwnedDirectory(string directory)
+        {
+            try
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+            catch (Exception ex)
+            {
+                OutputReceived?.Invoke(string.Format(GetLocalizedString("LogCleanupContinue"), ex.Message));
             }
         }
     }

@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version without the leading v
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          $version = if ($env:EVENT_NAME -eq 'workflow_dispatch') { $env:INPUT_VERSION } else { $env:REF_NAME.TrimStart('v') }
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid semantic version: $version" }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build, test, and package
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.value }}
+        run: ./scripts/Publish-Release.ps1 -Version $env:PACKAGE_VERSION
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tiny11-GUI-v${{ steps.version.outputs.value }}-win-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $assets = Get-ChildItem artifacts -File | Where-Object { $_.Extension -in '.zip', '.sha256' } | Select-Object -ExpandProperty FullName
+          if ($assets.Count -ne 2) { throw "Expected two release assets, found $($assets.Count)." }
+          gh release create $env:RELEASE_TAG @assets --verify-tag --generate-notes --title "Tiny11 GUI $env:RELEASE_TAG"

@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible Tiny11 GUI problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: checkboxes
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and removed sensitive information from logs.
+          required: true
+        - label: This is not a security vulnerability (security reports follow SECURITY.md).
+          required: true
+  - type: input
+    attributes:
+      label: Tiny11 GUI version
+      placeholder: Release version or commit hash
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Host Windows
+      placeholder: Windows edition, version, build; stock or trimmed
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Source image
+      placeholder: Windows version, language, edition, WIM or ESD
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include expected behavior, actual behavior, and reproducible steps.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Sanitized log excerpt
+      render: text
+  - type: textarea
+    attributes:
+      label: Selected preset and options
+      description: List the preset and any options changed from its defaults.

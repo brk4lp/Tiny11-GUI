@@ -116,6 +116,7 @@ LanguageTurkish=Türkçe
 LanguageEnglish=English
 LanguageChangedTR=Language changed to Turkish
 LanguageChangedEN=Language changed to English
+LanguageChanged=Language changed to {0}
 
 # Image Types Content
 StandardTypeContent=Standard (tiny11maker)
