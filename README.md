@@ -36,7 +36,7 @@ Tiny11 GUI is inspired by [tiny11builder](https://github.com/ntdevlabs/tiny11bui
 5. Review the selected options, start the build, and follow the live log.
 
 > [!IMPORTANT]
-> Use a legitimately obtained Windows ISO and test generated images in a virtual machine before deploying them. Removing system components or disabling security/update features can reduce compatibility, serviceability, and security.
+> Removing system components or disabling security/update features can reduce compatibility, serviceability, and security.
 
 ## Works on debloated Windows too
 
