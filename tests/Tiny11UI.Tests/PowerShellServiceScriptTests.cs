@@ -397,6 +397,7 @@ public class PowerShellServiceScriptTests
         DisableSponsoredApps = false,
         DisableReservedStorage = false,
         DisableBitLocker = false,
+        DisableDefender = false,
         BypassTPM = false,
         BypassCPU = false,
         BypassRAM = false,
@@ -590,6 +591,25 @@ public class PowerShellServiceScriptTests
         Assert.Contains("MicrosoftTeams", packages);
         Assert.Contains("MSTeams", packages);
         Assert.Contains("Microsoft.Windows.Teams", packages);
+    }
+
+    [Fact]
+    public void DefenderOption_AppliesDefenderServicingToStandardBuild()
+    {
+        var service = new PowerShellService(new LocalizationService());
+        var baseline = service.PreviewScript(@"C:\images\windows.iso", @"C:\scratch", @"C:\output\tiny11.iso", 3, BareOptions());
+        var options = BareOptions();
+        options.DisableDefender = true;
+        var standard = service.PreviewScript(@"C:\images\windows.iso", @"C:\scratch", @"C:\output\tiny11.iso", 3, options);
+
+        Assert.DoesNotContain("WinDefend", baseline);
+        Assert.DoesNotContain("Windows-Defender-Client-Package", baseline);
+        Assert.Contains("WinDefend", standard);
+        Assert.Contains("Windows-Defender-Client-Package*", standard);
+        Assert.Contains("Assert-NativeSuccess 'Defender package inventory'", standard);
+        // CORE'a özgü yıkıcı işlemler standart build'e sızmamalı.
+        Assert.DoesNotContain(@"Windows\System32\Recovery\winre.wim", standard);
+        Assert.DoesNotContain(@"Services\wuauserv", standard);
     }
 
     [Fact]
