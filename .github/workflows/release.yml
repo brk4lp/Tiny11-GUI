@@ -64,4 +64,6 @@ jobs:
         run: |
           $assets = Get-ChildItem artifacts -File | Where-Object { $_.Extension -in '.zip', '.sha256' } | Select-Object -ExpandProperty FullName
           if ($assets.Count -ne 2) { throw "Expected two release assets, found $($assets.Count)." }
-          gh release create $env:RELEASE_TAG @assets --verify-tag --generate-notes --title "Tiny11 GUI $env:RELEASE_TAG"
+          $prereleaseArgs = @()
+          if ($env:RELEASE_TAG -like '*-*') { $prereleaseArgs = @('--prerelease') }
+          gh release create $env:RELEASE_TAG @assets --verify-tag --generate-notes --title "Tiny11 GUI $env:RELEASE_TAG" @prereleaseArgs

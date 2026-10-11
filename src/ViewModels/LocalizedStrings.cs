@@ -102,6 +102,7 @@ namespace tiny11_ui.ViewModels
         public string SponsoredApps => _localization.GetString("SponsoredApps");
         public string ReservedStorage => _localization.GetString("ReservedStorage");
         public string BitLocker => _localization.GetString("BitLockerEncryption");
+        public string WindowsDefender => _localization.GetString("WindowsDefender");
     }
 
     public class LocalizedSystemRequirements
@@ -174,5 +175,6 @@ namespace tiny11_ui.ViewModels
         public string EnterprisePreset => _localization.GetString("PresetEnterpriseTooltip");
         public string LanguageSelector => _localization.GetString("Language");
         public string AutounattendTooltip => _localization.GetString("AutounattendTooltip");
+        public string DefenderTooltip => _localization.GetString("DefenderTooltip");
     }
 }

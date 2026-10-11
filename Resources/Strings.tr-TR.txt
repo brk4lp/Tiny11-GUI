@@ -1,4 +1,3 @@
-AppTitle=Tiny11 Builder GUI
 IsoSelection=Kaynak ISO:
 WorkingDirectory=Çalışma Dizini:
 OutputPath=Çıktı ISO Yolu:
@@ -43,7 +42,6 @@ PresetEnterpriseTooltip=İş ortamına uygun
 MicrosoftEdge=Microsoft Edge
 OneDrive=OneDrive
 Cortana=Cortana
-WindowsChat=Windows Chat
 MicrosoftTeams=Microsoft Teams / Sohbet
 XboxApps=Xbox Apps
 
@@ -78,8 +76,6 @@ DriverCleanup=Kullanılmayan Sürücüler (Yazıcı/Tarayıcı/Modem/Xbox)
 
 # Status Messages
 Ready=Hazır
-Processing=İşlem Sürüyor...
-Completed=Tamamlandı!
 Error=Hata Oluştu
 IsoSelected=ISO dosyası seçildi: {0}
 WorkingDirSelected=Çalışma dizini seçildi: {0}
@@ -88,17 +84,10 @@ AutounattendSelected=Özel autounattend.xml seçildi: {0}
 AutounattendCleared=Özel autounattend.xml seçimi temizlendi.
 
 # Build Process Messages
-BuildStarted=Tiny11 Oluşturma İşlemi Başladı
-MountingIso=ISO dosyası mount ediliyor...
-RunningScript=PowerShell betiği çalıştırılıyor...
 BuildCompleted=İşlem başarıyla tamamlandı!
 BuildFailed=İşlem başarısız oldu!
 
 # Error Messages
-IsoMountFailed=ISO dosyası mount edilemedi!
-ScriptNotFound=Script dosyası bulunamadı: {0}
-AdminRightsWarning=Yönetici yetkisi ile çalışması önerilir
-MissingFields=Eksik: {0}
 
 # Tooltips
 TPMTooltip=TPM 2.0 gereksinimini atlat
@@ -112,15 +101,9 @@ AutounattendTooltip=Dahili OOBE bypass ayarları yerine kendi autounattend.xml d
 
 # Language Selection
 Language=Uygulama Dili:
-LanguageTurkish=Türkçe
-LanguageEnglish=English
-LanguageChangedTR=Dil Türkçe olarak değiştirildi
-LanguageChangedEN=Dil İngilizce olarak değiştirildi
 LanguageChanged=Dil {0} olarak değiştirildi
 
 # Image Types Content
-StandardTypeContent=Standart (tiny11maker)
-CoreTypeContent=Core (tiny11Coremaker)
 
 # Startup Messages
 AppStarted=Tiny11 GUI başlatıldı
@@ -145,7 +128,6 @@ LogSelectedOptions=Seçilen Ayarlar:
 LogRemoveEdge=Edge Kaldır: {0}
 LogRemoveOneDrive=OneDrive Kaldır: {0}
 LogRemoveCortana=Cortana Kaldır: {0}
-LogRemoveChat=Chat Kaldır: {0}
 LogRemoveTeams=Teams Kaldır: {0}
 LogRemoveXbox=Xbox Kaldır: {0}
 LogDisableTelemetry=Telemetri Devre Dışı: {0}
@@ -160,8 +142,6 @@ LogNo=Hayır
 # Log Messages - Process Status
 LogScriptCreated=Özel script oluşturuldu: {0}
 LogTiny11Starting=Tiny11 oluşturma işlemi başlatılıyor...
-LogIsoMounting=ISO dosyası mount ediliyor...
-LogIsoMounted=ISO mount edildi: {0}
 LogProcessing=İşlem sürüyor...
 LogBuildSuccess=Tiny11 ISO dosyası başarıyla oluşturuldu!
 LogOutputLocation=Çıktı konumu: {0}
@@ -179,7 +159,6 @@ LogWimUnmounting=WIM unmount ediliyor (değişiklikler atılıyor)...
 LogIsoUnmounting=ISO unmount ediliyor...
 LogRegistryUnloading=Registry hive'ları kaldırılıyor...
 LogTempFilesDeleting=Geçici dosyalar siliniyor...
-LogTempFilesError=Bazı geçici dosyalar silinemedi: {0}
 LogCancelComplete=İşlem iptal edildi ve temizlik yapıldı.
 LogCancelError=İptal sırasında hata: {0}
 LogCancelByUser=İşlem kullanıcı tarafından iptal edildi.
@@ -187,38 +166,6 @@ LogCancelReceived=İptal isteği alındı...
 LogAlreadyRunning=Zaten bir işlem çalışıyor!
 
 # Log Messages - Script Process
-LogPreparingDirs=Dizinler hazırlanıyor...
-LogCopyingIso=ISO içeriği kopyalanıyor...
-LogConvertingEsd=ESD -> WIM dönüştürülüyor...
-LogMountingWim=Windows image mount ediliyor...
-LogRemovingApps=Gereksiz uygulamalar kaldırılıyor...
-LogRemoving=Kaldırılıyor: {0}
-LogSkipped=Atlandı: {0}
-LogRemovingEdge=Microsoft Edge kaldırılıyor...
-LogDeleted=Silindi: {0}
-LogRemovingOneDrive=OneDrive kaldırılıyor...
-LogApplyingRegistry=Registry ayarları uygulanıyor...
-LogBypassingRequirements=Sistem gereksinimleri bypass ediliyor...
-LogDisablingTelemetry=Telemetri devre dışı bırakılıyor...
-LogDisablingSponsoredApps=Önerilen uygulamalar devre dışı bırakılıyor...
-LogDisablingReservedStorage=Reserved Storage devre dışı bırakılıyor...
-LogDisablingBitLocker=BitLocker otomatik şifreleme devre dışı bırakılıyor...
-LogBypassingMSAccount=Microsoft hesabı gereksinimi bypass ediliyor...
-LogDisablingWindowsUpdate=Windows Update devre dışı bırakılıyor...
-LogDisablingDefender=Windows Defender devre dışı bırakılıyor (Güvenlik riski!)...
-LogSavingRegistry=Registry kaydediliyor...
-LogCreatingOobeScript=OOBE bypass scripti oluşturuluyor...
-LogCreatingAutounattend=autounattend.xml oluşturuluyor...
-LogSavingChanges=Değişiklikler kaydediliyor...
-LogUnmountingSourceIso=Kaynak ISO unmount ediliyor...
-LogCreatingIso=Tiny11 ISO oluşturuluyor...
-LogOscdimgNotFound=oscdimg.exe bulunamadı! Windows ADK yüklü olmalı.
-LogOscdimgFound=oscdimg bulundu: {0}
-LogCleaningUp=Temizlik yapılıyor...
-LogIsoCreatedSuccess=Tiny11 ISO başarıyla oluşturuldu!
-LogLocation=Konum: {0}
-LogSize=Boyut: {0} GB
-LogIsoCreationFailed=ISO oluşturulamadı!
 
 # Status Messages
 StatusStarting=İşlem başlatılıyor...
@@ -251,23 +198,14 @@ EditionsLoadFailed=Windows sürümleri yüklenemedi
 LoadingDefaultEditions=Varsayılan sürümler yükleniyor...
 
 # Process Messages
-LogProcessFailed=İşlem başarısız oldu (Exit Code: {0}), temizlik yapılıyor...
-LogProcessSuccess=İşlem başarıyla tamamlandı!
-LogIsoCopying=ISO dosyası kopyalanıyor: {0}
-LogIsoSaved=ISO dosyası başarıyla kaydedildi: {0}
-LogIsoCopyError=ISO kopyalama hatası: {0}
-LogSystemCleanupComplete=Sistem temizliği tamamlandı
 LogCleanupError=Temizlik hatası: {0}
 LogComprehensiveCleanup=Kapsamlı sistem temizliği yapılıyor...
 LogComprehensiveCleanupComplete=Kapsamlı temizlik tamamlandı
 LogCleanupContinue=Temizlik hatası (devam edilebilir): {0}
-LogSystemCleanupInProgress=Sistem temizliği yapılıyor...
 
 # Log Messages - Additional
 LogAdminRightsRecommended=Uyarı: Uygulamanın yönetici yetkisiyle çalıştırılması önerilir.
 LogAdminRightsNeededForEditions=Windows sürümlerini okumak için yönetici yetkisi gerekebilir.
-LogProcessCompletedBanner=*** İşlem Başarıyla Tamamlandı ***
-LogProcessFailedBanner=*** İşlem Hata Koduyla Sonlandı: {0} ***
 LogPresetMinimalApplied=Minimal preset uygulandı - Maksimum optimizasyon
 LogPresetBalancedApplied=Balanced preset uygulandı - Dengeli optimizasyon
 LogPresetGamingApplied=Gaming preset uygulandı - Performans optimizasyonu
@@ -275,5 +213,17 @@ LogPresetEnterpriseApplied=Enterprise preset uygulandı - İş ortamı optimizas
 LogEditionParseLineError=Parse hatası: {0} - Satır: {1}
 LogEditionParseFallback=Parse başarısız, tüm varsayılan sürümler ekleniyor...
 LogEditionsRetrievalFailed=Windows sürümleri alınamadı: {0}
-LogIsoUnmounted=ISO unmount edildi.
-LogIsoUnmountError=ISO unmount hatası: {0}
+
+DefenderTooltip=Seçildiğinde Windows Defender antivirüs servisleri imajda devre dışı bırakılır (CORE derlemelerdekiyle aynı işlem). Kurulan sistemde antivirüs koruması olmayacak.
+StatusLoadingEditions=Windows sürümleri yükleniyor...
+StatusReadyDefaultEditions=Hazır (Varsayılan sürümler)
+StatusExportingImage=İmaj dışa aktarılıyor...
+ValidationFailed=Ön kontroller başarısız. İşlem başlatılmadı.
+ValidationIsoNotFound=Windows ISO dosyası bulunamadı: {0}
+ValidationInvalidPath=Geçersiz yol: {0}
+ValidationOutputEqualsIso=Çıktı ISO'su, kaynak ISO ile aynı olamaz.
+ValidationOutputInsideScratch=Çıktı ISO'su, çalışma dizininin içinde olamaz.
+ValidationOutputDirCreateFailed=Çıktı dizini oluşturulamadı: {0}
+ValidationScratchCreateFailed=Çalışma dizini oluşturulamadı: {0}
+ValidationDiskSpace={0} üzerinde yeterli boş disk alanı yok: {1:F1} GB gerekli, {2:F1} GB kullanılabilir.
+ValidationDiskSpaceUnknown=Boş disk alanı kontrol edilemedi ({0}). Devam ediliyor.

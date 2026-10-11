@@ -18,7 +18,7 @@ Tiny11 GUI is inspired by [tiny11builder](https://github.com/ntdevlabs/tiny11bui
 
 - Build from WIM- or ESD-based Windows 11 media with edition selection
 - Removable apps: Edge, OneDrive, Cortana, Chat, Teams, Xbox
-- Disable telemetry, Windows Update, Defender, sponsored apps, reserved storage, BitLocker
+- Disable telemetry, Windows Update, sponsored apps, reserved storage, BitLocker, and (optionally) Windows Defender
 - Size reduction: DISM component store cleanup, recovery compression of `install.wim`, Hyper-V/Recall/Speech/OCR/Handwriting stripping, driver store cleanup
 - Bypass TPM/CPU/RAM/Secure Boot checks and MS account/network/privacy setup steps
 - Built-in presets: Minimal, Balanced, Gaming, Enterprise

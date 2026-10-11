@@ -148,6 +148,9 @@ namespace tiny11_ui.ViewModels
         private bool _disableBitLocker = true;
         public bool DisableBitLocker { get => _disableBitLocker; set { _disableBitLocker = value; OnPropertyChanged(); } }
 
+        private bool _disableDefender = false;
+        public bool DisableDefender { get => _disableDefender; set { _disableDefender = value; OnPropertyChanged(); } }
+
         // System Requirements Bypass
         private bool _bypassTPM = true;
         public bool BypassTPM { get => _bypassTPM; set { _bypassTPM = value; OnPropertyChanged(); } }
@@ -527,7 +530,13 @@ namespace tiny11_ui.ViewModels
             {
                 StatusText = GetLocalizedString("StatusStarting");
                 IsIndeterminate = true;
-                
+
+                // Yol doğrulamaları ve disk alanı ön kontrolü
+                if (!ValidateBuildPrerequisites())
+                {
+                    return;
+                }
+
                 // Çalışma dizini oluştur
                 if (!Directory.Exists(ScratchPath))
                 {
@@ -550,6 +559,7 @@ namespace tiny11_ui.ViewModels
                     DisableSponsoredApps = DisableSponsoredApps,
                     DisableReservedStorage = DisableReservedStorage,
                     DisableBitLocker = DisableBitLocker,
+                    DisableDefender = DisableDefender,
                     
                     // Sistem gereksinimleri bypass
                     BypassTPM = BypassTPM,
@@ -592,6 +602,7 @@ namespace tiny11_ui.ViewModels
                 LogOutput += "   " + string.Format(GetLocalizedString("LogRemoveXbox"), RemoveXbox ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogDisableTelemetry"), DisableTelemetry ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogDisableUpdate"), DisableWindowsUpdate ? yes : no) + "\n";
+                LogOutput += "   " + string.Format(GetLocalizedString("LogDisableDefender"), DisableDefender ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogBypassTPM"), BypassTPM ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogBypassMSAccount"), BypassMSAccount ? yes : no) + "\n";
                 LogOutput += "   " + string.Format(GetLocalizedString("LogCustomAutounattend"), string.IsNullOrWhiteSpace(CustomAutounattendPath) ? no : CustomAutounattendPath) + "\n";
@@ -659,6 +670,139 @@ namespace tiny11_ui.ViewModels
             }
         }
 
+        /// <summary>
+        /// İşlem başlamadan önce yol doğrulamaları ve disk alanı kontrolü yapar.
+        /// Hata varsa log'a yazar ve false döner.
+        /// </summary>
+        private bool ValidateBuildPrerequisites()
+        {
+            string fullIsoPath, fullScratchPath, fullOutputPath;
+            try
+            {
+                fullIsoPath = Path.GetFullPath(IsoPath);
+                fullScratchPath = Path.GetFullPath(ScratchPath);
+                fullOutputPath = Path.GetFullPath(OutputPath);
+            }
+            catch (Exception ex)
+            {
+                LogOutput += string.Format(GetLocalizedString("ValidationInvalidPath"), ex.Message) + "\n";
+                return FailPrerequisites();
+            }
+
+            if (!File.Exists(fullIsoPath))
+            {
+                LogOutput += string.Format(GetLocalizedString("ValidationIsoNotFound"), fullIsoPath) + "\n";
+                return FailPrerequisites();
+            }
+
+            if (string.Equals(fullOutputPath, fullIsoPath, StringComparison.OrdinalIgnoreCase))
+            {
+                LogOutput += GetLocalizedString("ValidationOutputEqualsIso") + "\n";
+                return FailPrerequisites();
+            }
+
+            if (IsPathInsideDirectory(fullOutputPath, fullScratchPath))
+            {
+                LogOutput += GetLocalizedString("ValidationOutputInsideScratch") + "\n";
+                return FailPrerequisites();
+            }
+
+            try
+            {
+                Directory.CreateDirectory(fullScratchPath);
+            }
+            catch (Exception ex)
+            {
+                LogOutput += string.Format(GetLocalizedString("ValidationScratchCreateFailed"), $"{fullScratchPath} ({ex.Message})") + "\n";
+                return FailPrerequisites();
+            }
+
+            var outputDirectory = Path.GetDirectoryName(fullOutputPath);
+            try
+            {
+                if (!string.IsNullOrEmpty(outputDirectory))
+                {
+                    Directory.CreateDirectory(outputDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOutput += string.Format(GetLocalizedString("ValidationOutputDirCreateFailed"), $"{outputDirectory} ({ex.Message})") + "\n";
+                return FailPrerequisites();
+            }
+
+            return CheckFreeDiskSpace(fullIsoPath, fullScratchPath, fullOutputPath);
+        }
+
+        /// <summary>
+        /// Scratch ve çıktı sürücülerinde yeterli boş alan olup olmadığını kontrol eder.
+        /// Tahmin: scratch için ISO boyutunun 2 katı + 10 GB, çıktı için ISO boyutunun 1,2 katı.
+        /// </summary>
+        private bool CheckFreeDiskSpace(string fullIsoPath, string fullScratchPath, string fullOutputPath)
+        {
+            const double gigabyte = 1024.0 * 1024.0 * 1024.0;
+            double isoSizeGb;
+            try
+            {
+                isoSizeGb = new FileInfo(fullIsoPath).Length / gigabyte;
+            }
+            catch (Exception ex)
+            {
+                LogOutput += string.Format(GetLocalizedString("ValidationDiskSpaceUnknown"), ex.Message) + "\n";
+                return true;
+            }
+
+            var scratchRequiredGb = isoSizeGb * 2.0 + 10.0;
+            var outputRequiredGb = isoSizeGb * 1.2;
+
+            try
+            {
+                var scratchRoot = Path.GetPathRoot(fullScratchPath) ?? fullScratchPath;
+                var outputRoot = Path.GetPathRoot(fullOutputPath) ?? fullOutputPath;
+                var scratchAvailableGb = new DriveInfo(scratchRoot).AvailableFreeSpace / gigabyte;
+                var sameDrive = string.Equals(scratchRoot, outputRoot, StringComparison.OrdinalIgnoreCase);
+                var outputAvailableGb = sameDrive
+                    ? scratchAvailableGb
+                    : new DriveInfo(outputRoot).AvailableFreeSpace / gigabyte;
+
+                var scratchOk = scratchAvailableGb >= scratchRequiredGb;
+                var outputOk = outputAvailableGb >= (sameDrive ? scratchRequiredGb + outputRequiredGb : outputRequiredGb);
+
+                if (!scratchOk)
+                {
+                    LogOutput += string.Format(GetLocalizedString("ValidationDiskSpace"), scratchRoot, scratchRequiredGb, scratchAvailableGb) + "\n";
+                    return FailPrerequisites();
+                }
+
+                if (!outputOk)
+                {
+                    LogOutput += string.Format(GetLocalizedString("ValidationDiskSpace"),
+                        outputRoot, sameDrive ? scratchRequiredGb + outputRequiredGb : outputRequiredGb, outputAvailableGb) + "\n";
+                    return FailPrerequisites();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Örn. UNC yollarında DriveInfo çalışmayabilir; kontrolü atlayıp devam et.
+                LogOutput += string.Format(GetLocalizedString("ValidationDiskSpaceUnknown"), ex.Message) + "\n";
+            }
+
+            return true;
+        }
+
+        private static bool IsPathInsideDirectory(string path, string directory)
+        {
+            var normalizedDirectory = Path.GetFullPath(directory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return path.StartsWith(normalizedDirectory, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool FailPrerequisites()
+        {
+            LogOutput += GetLocalizedString("ValidationFailed") + "\n";
+            return false;
+        }
+
         private bool CanStartBuild()
         {
             // İşlem çalışıyorsa başlatılamaz
@@ -715,11 +859,11 @@ namespace tiny11_ui.ViewModels
                     
                     SelectedEdition = WindowsEditions[3]; // Windows 11 Pro'yu varsayılan yap
                     IsEditionSelectionEnabled = true;
-                    StatusText = "Hazır (Varsayılan sürümler)";
+                    StatusText = GetLocalizedString("StatusReadyDefaultEditions");
                     return;
                 }
 
-                StatusText = "Windows sürümleri yükleniyor...";
+                StatusText = GetLocalizedString("StatusLoadingEditions");
                 IsIndeterminate = true;
                 
                 var editions = await _powerShellService.GetWindowsEditionsAsync(IsoPath!);
@@ -741,7 +885,7 @@ namespace tiny11_ui.ViewModels
                     LogOutput += GetLocalizedString("NoEditionsFound") + "\n";
                 }
 
-                StatusText = "Hazır";
+                StatusText = GetLocalizedString("StatusReady");
             }
             catch (Exception ex)
             {
@@ -759,7 +903,7 @@ namespace tiny11_ui.ViewModels
                 SelectedEdition = WindowsEditions[3]; // Windows 11 Pro
                 IsEditionSelectionEnabled = true;
                 
-                StatusText = "Hazır (Varsayılan sürümler)";
+                StatusText = GetLocalizedString("StatusReadyDefaultEditions");
             }
             finally
             {
@@ -776,7 +920,7 @@ namespace tiny11_ui.ViewModels
                 
                 // Progress tracking based on output messages
                 if (output.Contains("Exporting image"))
-                    StatusText = "Exporting image...";
+                    StatusText = GetLocalizedString("StatusExportingImage");
                 else if (output.Contains("Unmounting image"))
                     StatusText = GetLocalizedString("StatusUnmounting");
                 else if (output.Contains("Cleanup complete"))
@@ -815,6 +959,7 @@ namespace tiny11_ui.ViewModels
             DisableSponsoredApps = true;
             DisableReservedStorage = true;
             DisableBitLocker = true;
+            DisableDefender = true;
             
             BypassTPM = true;
             BypassCPU = true;
@@ -851,6 +996,7 @@ namespace tiny11_ui.ViewModels
             DisableSponsoredApps = true;
             DisableReservedStorage = true;
             DisableBitLocker = true;
+            DisableDefender = false;
             
             BypassTPM = true;
             BypassCPU = true;
@@ -887,6 +1033,7 @@ namespace tiny11_ui.ViewModels
             DisableSponsoredApps = true;
             DisableReservedStorage = false; // Performans için
             DisableBitLocker = true;
+            DisableDefender = false;
             
             BypassTPM = true;
             BypassCPU = true;
@@ -923,6 +1070,7 @@ namespace tiny11_ui.ViewModels
             DisableSponsoredApps = true;
             DisableReservedStorage = false;
             DisableBitLocker = false; // Enterprise güvenlik
+            DisableDefender = false; // Enterprise güvenlik
             
             BypassTPM = false; // Enterprise güvenlik için TPM korunur
             BypassCPU = true;

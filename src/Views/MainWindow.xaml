@@ -7,9 +7,10 @@
         xmlns:converters="clr-namespace:tiny11_ui.Converters"
         mc:Ignorable="d"
         Title="Tiny11 GUI"
-        Height="920" Width="1040"
+        Height="880" Width="1000"
+        MinHeight="560" MinWidth="880"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize">
+        ResizeMode="CanResizeWithGrip">
     
     <Window.DataContext>
         <viewModels:MainViewModel />
@@ -218,6 +219,7 @@
                                     <CheckBox IsChecked="{Binding DisableSponsoredApps}" Content="{Binding LocalizedSystemFeatures.SponsoredApps}" Style="{StaticResource CompactCheckBox}"/>
                                     <CheckBox IsChecked="{Binding DisableReservedStorage}" Content="{Binding LocalizedSystemFeatures.ReservedStorage}" Style="{StaticResource CompactCheckBox}"/>
                                     <CheckBox IsChecked="{Binding DisableBitLocker}" Content="{Binding LocalizedSystemFeatures.BitLocker}" Style="{StaticResource CompactCheckBox}"/>
+                                    <CheckBox IsChecked="{Binding DisableDefender}" Content="{Binding LocalizedSystemFeatures.WindowsDefender}" ToolTip="{Binding LocalizedTooltips.DefenderTooltip}" Style="{StaticResource CompactCheckBox}"/>
                                 </StackPanel>
                             </GroupBox>
                         </Grid>

@@ -572,13 +572,34 @@ namespace tiny11_ui.Services
                 sb.AppendLine();
             }
 
-            if (isCoreBuild)
+            // Defender paket kaldırma: standart build'de "Disable Defender" seçildiyse veya CORE build'de çalışır.
+            // CORE build'de Defender ile birlikte diğer sistem paketleri de kaldırılır.
+            var removeDefenderPackage = options.DisableDefender || isCoreBuild;
+            if (removeDefenderPackage)
             {
-                sb.AppendLine(@"# CORE: servis edilebilirliği azaltan ek sistem paketi temizliği");
-                sb.AppendLine(@"Write-Host 'CORE build: removing recovery and selected system packages...' -ForegroundColor Red");
-                sb.AppendLine(@"$corePackagePatterns = @('Windows-Defender-Client-Package*', 'Microsoft-Windows-InternetExplorer-Optional-Package*', 'Microsoft-Windows-MediaPlayer-Package*', 'Microsoft-Windows-WordPad-FoD-Package*', 'Microsoft-Windows-StepsRecorder-Package*')");
+                var corePackagePatterns = new List<string> { "Windows-Defender-Client-Package*" };
+                if (isCoreBuild)
+                {
+                    corePackagePatterns.Add("Microsoft-Windows-InternetExplorer-Optional-Package*");
+                    corePackagePatterns.Add("Microsoft-Windows-MediaPlayer-Package*");
+                    corePackagePatterns.Add("Microsoft-Windows-WordPad-FoD-Package*");
+                    corePackagePatterns.Add("Microsoft-Windows-StepsRecorder-Package*");
+                }
+
+                sb.AppendLine(isCoreBuild
+                    ? @"# CORE: servis edilebilirliği azaltan ek sistem paketi temizliği"
+                    : @"# Windows Defender paketini kaldırmayı dene");
+                sb.AppendLine(isCoreBuild
+                    ? @"Write-Host 'CORE build: removing recovery and selected system packages...' -ForegroundColor Red"
+                    : @"Write-Host 'Attempting Windows Defender package removal...' -ForegroundColor Cyan");
+                sb.AppendLine(@"$corePackagePatterns = @(");
+                foreach (var pattern in corePackagePatterns)
+                {
+                    sb.AppendLine($@"    '{pattern}'");
+                }
+                sb.AppendLine(@")");
                 sb.AppendLine(@"$packageOutput = & $dismPath /English /Image:$mountDir /Get-Packages /Format:List");
-                sb.AppendLine(@"Assert-NativeSuccess 'CORE package inventory'");
+                sb.AppendLine($@"Assert-NativeSuccess '{(isCoreBuild ? "CORE package inventory" : "Defender package inventory")}'");
                 sb.AppendLine(@"$packageNames = $packageOutput | Select-String '^Package Identity\s*:\s*(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }");
                 sb.AppendLine(@"foreach ($pattern in $corePackagePatterns) {");
                 sb.AppendLine(@"    foreach ($packageName in ($packageNames | Where-Object { $_ -like $pattern })) {");
@@ -591,6 +612,10 @@ namespace tiny11_ui.Services
                 sb.AppendLine(@"        }");
                 sb.AppendLine(@"    }");
                 sb.AppendLine(@"}");
+            }
+
+            if (isCoreBuild)
+            {
                 sb.AppendLine(@"$winRePath = Join-Path $mountDir 'Windows\System32\Recovery\winre.wim'");
                 sb.AppendLine(@"if (Test-Path $winRePath) { Remove-Item $winRePath -Force -ErrorAction Stop; New-Item $winRePath -ItemType File -Force | Out-Null }");
                 sb.AppendLine();
@@ -779,10 +804,17 @@ namespace tiny11_ui.Services
                 sb.AppendLine();
             }
 
-            if (isCoreBuild)
+            // Defender servislerini devre dışı bırak: standart build'de "Disable Defender"
+            // seçildiyse veya CORE build'de. Offline düzenleme olduğundan Tamper Protection
+            // devrede değildir.
+            if (options.DisableDefender || isCoreBuild)
             {
-                sb.AppendLine(@"# CORE: Defender servislerini devre dışı bırak");
-                sb.AppendLine(@"Write-Host 'CORE build: disabling Defender services...' -ForegroundColor Red");
+                sb.AppendLine(isCoreBuild
+                    ? @"# CORE: Defender servislerini devre dışı bırak"
+                    : @"# Windows Defender servislerini devre dışı bırak");
+                sb.AppendLine(isCoreBuild
+                    ? @"Write-Host 'CORE build: disabling Defender services...' -ForegroundColor Red"
+                    : @"Write-Host 'Disabling Windows Defender services...' -ForegroundColor Cyan");
                 sb.AppendLine(@"foreach ($serviceName in @('WinDefend', 'WdNisSvc', 'WdNisDrv', 'WdFilter', 'Sense')) {");
                 sb.AppendLine(@"    $serviceKey = 'HKLM\OFFLINE_SYSTEM\ControlSet001\Services\' + $serviceName");
                 sb.AppendLine(@"    & reg.exe query $serviceKey 2>$null | Out-Null");

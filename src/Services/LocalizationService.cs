@@ -10,16 +10,53 @@ namespace tiny11_ui.Services
         private static LocalizationService? _instance;
         public static LocalizationService Instance => _instance ??= new LocalizationService();
 
+        private static readonly string[] SupportedLanguages =
+        {
+            "tr-TR", "en-US", "ru-RU", "ja-JP", "de-DE", "fr-FR", "es-ES", "zh-CN"
+        };
+
         private readonly Dictionary<string, string> _strings = new Dictionary<string, string>();
-        private string _currentLanguage = "tr-TR"; // Varsayılan dil
+        private string _currentLanguage = "en-US";
 
         public event EventHandler<string>? LanguageChanged;
 
-        public string CurrentLanguage { get; private set; } = "tr-TR";
+        public string CurrentLanguage { get; private set; } = "en-US";
 
         public LocalizationService()
         {
-            LoadLanguage(_currentLanguage);
+            LoadLanguage(DetectDefaultLanguage());
+        }
+
+        /// <summary>
+        /// İşletim sisteminin UI diline göre başlangıç dilini seçer.
+        /// Tam eşleşme yoksa dil kodu (ör. de-AT → de-DE), o da yoksa en-US kullanılır.
+        /// </summary>
+        private static string DetectDefaultLanguage()
+        {
+            try
+            {
+                var uiCulture = CultureInfo.CurrentUICulture;
+                if (!string.IsNullOrEmpty(uiCulture?.Name))
+                {
+                    var exact = SupportedLanguages.FirstOrDefault(code =>
+                        string.Equals(code, uiCulture.Name, StringComparison.OrdinalIgnoreCase));
+                    if (exact != null) return exact;
+
+                    var languageTag = uiCulture.TwoLetterISOLanguageName;
+                    if (!string.IsNullOrEmpty(languageTag))
+                    {
+                        var neutral = SupportedLanguages.FirstOrDefault(code =>
+                            code.StartsWith(languageTag + "-", StringComparison.OrdinalIgnoreCase));
+                        if (neutral != null) return neutral;
+                    }
+                }
+            }
+            catch
+            {
+                // Culture API'leri her ortanda çalışmayabilir; sessizce İngilizce'ye dön.
+            }
+
+            return "en-US";
         }
 
         public void LoadLanguage(string languageCode)

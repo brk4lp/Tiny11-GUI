@@ -1,4 +1,3 @@
-AppTitle=Tiny11 Builder GUI
 IsoSelection=Source ISO:
 WorkingDirectory=Working Directory:
 OutputPath=Output ISO Path:
@@ -43,7 +42,6 @@ PresetEnterpriseTooltip=Business environment suitable
 MicrosoftEdge=Microsoft Edge
 OneDrive=OneDrive
 Cortana=Cortana
-WindowsChat=Windows Chat
 MicrosoftTeams=Microsoft Teams / Chat
 XboxApps=Xbox Apps
 
@@ -78,8 +76,6 @@ DriverCleanup=Unused Drivers (Printer/Scanner/Modem/Xbox)
 
 # Status Messages
 Ready=Ready
-Processing=Processing...
-Completed=Completed!
 Error=Error Occurred
 IsoSelected=ISO file selected: {0}
 WorkingDirSelected=Working directory selected: {0}
@@ -88,17 +84,10 @@ AutounattendSelected=Custom autounattend.xml selected: {0}
 AutounattendCleared=Custom autounattend.xml selection cleared.
 
 # Build Process Messages
-BuildStarted=Tiny11 Build Process Started
-MountingIso=Mounting ISO file...
-RunningScript=Running PowerShell script...
 BuildCompleted=Process completed successfully!
 BuildFailed=Process failed!
 
 # Error Messages
-IsoMountFailed=Could not mount ISO file!
-ScriptNotFound=Script file not found: {0}
-AdminRightsWarning=Running with administrator privileges is recommended
-MissingFields=Missing: {0}
 
 # Tooltips
 TPMTooltip=Bypass TPM 2.0 requirement
@@ -112,15 +101,9 @@ AutounattendTooltip=Use your own autounattend.xml instead of the built-in OOBE b
 
 # Language Selection
 Language=Application Language:
-LanguageTurkish=Türkçe
-LanguageEnglish=English
-LanguageChangedTR=Language changed to Turkish
-LanguageChangedEN=Language changed to English
 LanguageChanged=Language changed to {0}
 
 # Image Types Content
-StandardTypeContent=Standard (tiny11maker)
-CoreTypeContent=Core (tiny11Coremaker)
 
 # Startup Messages
 AppStarted=Tiny11 GUI started
@@ -145,7 +128,6 @@ LogSelectedOptions=Selected Options:
 LogRemoveEdge=Remove Edge: {0}
 LogRemoveOneDrive=Remove OneDrive: {0}
 LogRemoveCortana=Remove Cortana: {0}
-LogRemoveChat=Remove Chat: {0}
 LogRemoveTeams=Remove Teams: {0}
 LogRemoveXbox=Remove Xbox: {0}
 LogDisableTelemetry=Disable Telemetry: {0}
@@ -160,8 +142,6 @@ LogNo=No
 # Log Messages - Process Status
 LogScriptCreated=Custom script created: {0}
 LogTiny11Starting=Tiny11 build process starting...
-LogIsoMounting=ISO file is being mounted...
-LogIsoMounted=ISO mounted: {0}
 LogProcessing=Processing...
 LogBuildSuccess=Tiny11 ISO created successfully!
 LogOutputLocation=Output location: {0}
@@ -179,7 +159,6 @@ LogWimUnmounting=WIM unmounting (discarding changes)...
 LogIsoUnmounting=ISO unmounting...
 LogRegistryUnloading=Registry hives unloading...
 LogTempFilesDeleting=Temporary files deleting...
-LogTempFilesError=Some temporary files could not be deleted: {0}
 LogCancelComplete=Process cancelled and cleanup completed.
 LogCancelError=Error during cancellation: {0}
 LogCancelByUser=Process cancelled by user.
@@ -187,38 +166,6 @@ LogCancelReceived=Cancel request received...
 LogAlreadyRunning=A process is already running!
 
 # Log Messages - Script Process
-LogPreparingDirs=Directories are being prepared...
-LogCopyingIso=ISO content is being copied...
-LogConvertingEsd=ESD -> WIM converting...
-LogMountingWim=Windows image mounting...
-LogRemovingApps=Removing unnecessary applications...
-LogRemoving=Removing: {0}
-LogSkipped=Skipped: {0}
-LogRemovingEdge=Microsoft Edge is being removed...
-LogDeleted=Deleted: {0}
-LogRemovingOneDrive=OneDrive is being removed...
-LogApplyingRegistry=Registry settings are being applied...
-LogBypassingRequirements=System requirements are being bypassed...
-LogDisablingTelemetry=Telemetry is being disabled...
-LogDisablingSponsoredApps=Sponsored apps are being disabled...
-LogDisablingReservedStorage=Reserved Storage is being disabled...
-LogDisablingBitLocker=BitLocker auto-encryption is being disabled...
-LogBypassingMSAccount=Microsoft account requirement is being bypassed...
-LogDisablingWindowsUpdate=Windows Update is being disabled...
-LogDisablingDefender=Windows Defender is being disabled (Security risk!)...
-LogSavingRegistry=Registry is being saved...
-LogCreatingOobeScript=OOBE bypass script is being created...
-LogCreatingAutounattend=autounattend.xml is being created...
-LogSavingChanges=Changes are being saved...
-LogUnmountingSourceIso=Source ISO unmounting...
-LogCreatingIso=Tiny11 ISO is being created...
-LogOscdimgNotFound=oscdimg.exe not found! Windows ADK must be installed.
-LogOscdimgFound=oscdimg found: {0}
-LogCleaningUp=Cleanup in progress...
-LogIsoCreatedSuccess=Tiny11 ISO created successfully!
-LogLocation=Location: {0}
-LogSize=Size: {0} GB
-LogIsoCreationFailed=ISO could not be created!
 
 # Status Messages
 StatusStarting=Starting process...
@@ -251,23 +198,14 @@ EditionsLoadFailed=Could not load Windows editions
 LoadingDefaultEditions=Loading default editions...
 
 # Process Messages
-LogProcessFailed=Process failed (Exit Code: {0}), cleaning up...
-LogProcessSuccess=Process completed successfully!
-LogIsoCopying=Copying ISO file: {0}
-LogIsoSaved=ISO file saved successfully: {0}
-LogIsoCopyError=ISO copy error: {0}
-LogSystemCleanupComplete=System cleanup completed
 LogCleanupError=Cleanup error: {0}
 LogComprehensiveCleanup=Performing comprehensive system cleanup...
 LogComprehensiveCleanupComplete=Comprehensive cleanup completed
 LogCleanupContinue=Cleanup error (continuing): {0}
-LogSystemCleanupInProgress=System cleanup in progress...
 
 # Log Messages - Additional
 LogAdminRightsRecommended=Warning: Running the application with administrator privileges is recommended.
 LogAdminRightsNeededForEditions=Administrator privileges may be required to read Windows editions.
-LogProcessCompletedBanner=*** Process Completed Successfully ***
-LogProcessFailedBanner=*** Process Ended With Error Code: {0} ***
 LogPresetMinimalApplied=Minimal preset applied - Maximum optimization
 LogPresetBalancedApplied=Balanced preset applied - Balanced optimization
 LogPresetGamingApplied=Gaming preset applied - Performance optimization
@@ -275,5 +213,17 @@ LogPresetEnterpriseApplied=Enterprise preset applied - Business environment opti
 LogEditionParseLineError=Parse error: {0} - Line: {1}
 LogEditionParseFallback=Parsing failed, adding all default editions...
 LogEditionsRetrievalFailed=Could not retrieve Windows editions: {0}
-LogIsoUnmounted=ISO unmounted.
-LogIsoUnmountError=ISO unmount error: {0}
+
+DefenderTooltip=When selected, Windows Defender antivirus services are disabled in the image (same as CORE builds). The installed system will have no antivirus protection.
+StatusLoadingEditions=Loading Windows editions...
+StatusReadyDefaultEditions=Ready (default editions)
+StatusExportingImage=Exporting image...
+ValidationFailed=Pre-checks failed. The build was not started.
+ValidationIsoNotFound=Windows ISO file not found: {0}
+ValidationInvalidPath=Invalid path: {0}
+ValidationOutputEqualsIso=The output ISO cannot be the same as the source ISO.
+ValidationOutputInsideScratch=The output ISO cannot be inside the working directory.
+ValidationOutputDirCreateFailed=The output directory could not be created: {0}
+ValidationScratchCreateFailed=The working directory could not be created: {0}
+ValidationDiskSpace=Not enough free disk space on {0}: {1:F1} GB required, {2:F1} GB available.
+ValidationDiskSpaceUnknown=Free disk space could not be checked ({0}). Continuing anyway.

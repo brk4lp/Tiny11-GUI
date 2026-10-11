@@ -4,6 +4,25 @@ Notable changes to Tiny11 GUI are documented here. The project follows semantic 
 
 ## Unreleased
 
+## 1.3.0-beta.1 — 2026-10-11
+
+### Added
+
+- Optional **Disable Windows Defender** checkbox for Standard builds. When selected, Defender antivirus services are disabled in the offline image and Defender package removal is attempted — the same Defender servicing CORE builds apply. CORE-only destructive operations (recovery image removal, Windows Update service disabling) are not applied to Standard builds.
+- Build pre-checks before any servicing starts: source ISO existence, output path must differ from the source ISO and stay outside the working directory, and output/working directories must be creatable.
+- Free disk space pre-check. The working drive needs roughly 2× the ISO size plus 10 GB and the output drive 1.2× the ISO size; the build refuses to start with a clear message instead of failing mid-way through DISM.
+- The UI language is now chosen from the operating system's UI language (with English fallback) instead of always starting in Turkish.
+
+### Changed
+
+- The main window is now resizable (`CanResizeWithGrip`, minimum 880×560) instead of fixed-size, so it fits smaller or high-DPI screens.
+- Versioned releases whose tag contains a pre-release suffix (for example `v1.3.0-beta.1`) are published as GitHub pre-releases.
+
+### Fixed
+
+- Removed hardcoded Turkish and English status messages ("Hazır", "Windows sürümleri yükleniyor...", "Exporting image...") that appeared regardless of the selected UI language; they are now localized in all eight languages.
+- Localization resource files are consistent again: 66 unused legacy keys were removed, and all eight languages now carry the identical 174-key set. Previously six translations were missing 49 keys that only existed in English and Turkish.
+
 ## 1.2.3 — 2026-09-18
 
 ### Fixed

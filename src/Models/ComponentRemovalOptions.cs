@@ -19,6 +19,12 @@ namespace tiny11_ui.Models
         public bool DisableReservedStorage { get; set; } = true;
         public bool DisableBitLocker { get; set; } = true;
 
+        /// <summary>
+        /// Windows Defender antivirüs servislerini imajda devre dışı bırakır ve Defender paketini
+        /// kaldırmayı dener (CORE derlemesindeki Defender işlemleriyle aynı).
+        /// </summary>
+        public bool DisableDefender { get; set; } = false;
+
         // Sistem Gereksinimleri Bypass
         public bool BypassTPM { get; set; } = true;
         public bool BypassCPU { get; set; } = true;
